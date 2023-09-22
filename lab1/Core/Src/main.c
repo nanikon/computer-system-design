@@ -91,14 +91,15 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  HAL_GPIO_WritePin (LEDG_GPIO_Port, LEDG_Pin, GPIO_PIN_SET);
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  HAL_GPIO_TogglePin (LEDG_GPIO_Port, LEDG_Pin);
-	  HAL_Delay(600);
+	  turn_on_yellow_led();
+	  HAL_Delay(200);
+	  turn_off_yellow_led();
+	  HAL_Delay(400);
   }
   /* USER CODE END 3 */
 }
@@ -161,14 +162,14 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LEDG_GPIO_Port, LEDG_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LEDG_Pin|LEDR_Pin|LEDY_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : LEDG_Pin */
-  GPIO_InitStruct.Pin = LEDG_Pin;
+  /*Configure GPIO pins : LEDG_Pin LEDR_Pin LEDY_Pin */
+  GPIO_InitStruct.Pin = LEDG_Pin|LEDR_Pin|LEDY_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LEDG_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
