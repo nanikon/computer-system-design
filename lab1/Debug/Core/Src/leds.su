@@ -1,0 +1,6 @@
+../Core/Src/leds.c:3:6:turn_on_green_led	8	static
+../Core/Src/leds.c:7:6:turn_off_green_led	8	static
+../Core/Src/leds.c:11:6:turn_on_yellow_led	8	static
+../Core/Src/leds.c:15:6:turn_off_yellow_led	8	static
+../Core/Src/leds.c:19:6:turn_on_red_led	8	static
+../Core/Src/leds.c:23:6:turn_off_red_led	8	static
