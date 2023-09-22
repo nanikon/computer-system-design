@@ -26,7 +26,13 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+#define LONG_PERIOD_CT 2000
+#define BUFFER_SIZE 2048
+#define DEFAULT_DELAY 200
+#define ERROR_DELAY 600
+#define ERROR_COUNT 2
+#define COMMA_DELAY DEFAULT_DELAY
+#define DASH_DELAY 1000
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -42,19 +48,32 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+int is_pressed = 0; // нажата ли кнопка, устанавливается в таймере
+int is_wait_unpressed = 0; // ожидаем ли отпускание кнопки
+int is_reading = 1; // есть ли что в памяти чтобы читать (можно pointer сделать глобальным и проверять на ноль
+int count_tick = 0; // кол-во тиков таймера в текущем состоянии is_pressed, устанавливается в таймере
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
-
+void send_message(int buffer[], int pointer);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void send_message(int buffer[], int pointer) {
+	for (int i = 0; i < pointer; i++) {
+		turn_on_green_led();
+		if (1 == buffer[i]) {
+			HAL_Delay(DASH_DELAY);
+		} else {
+			HAL_Delay(COMMA_DELAY);
+		}
+		turn_off_green_led();
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -91,15 +110,49 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int buffer[BUFFER_SIZE] = {0};
+  int pointer = 0;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  turn_on_yellow_led();
-	  HAL_Delay(200);
-	  turn_off_yellow_led();
-	  HAL_Delay(400);
+	  if (0 == is_pressed && 0 == is_wait_unpressed) {
+		  if (count_tick > LONG_PERIOD_CT && 0 != pointer){
+			  is_reading = 0;
+			  send_message(buffer, pointer);
+			  pointer = 0;
+			  is_reading = 1;
+		  }
+	  } else if (0 == is_pressed && 1 == is_wait_unpressed) {
+		  is_wait_unpressed = 0;
+		  if (count_tick > LONG_PERIOD_CT) {
+			  turn_on_red_led();
+			  HAL_Delay(DEFAULT_DELAY);
+			  turn_off_red_led();
+			  buffer[pointer] = 1;
+		  } else {
+			  turn_on_yellow_led();
+			  HAL_Delay(DEFAULT_DELAY);
+			  turn_off_yellow_led();
+			  buffer[pointer] = 0;
+		  }
+		  pointer++;
+		  if (BUFFER_SIZE == pointer) {
+			  for (int i = 0; i < ERROR_COUNT; i++) {
+				  turn_on_red_led();
+				  turn_on_green_led();
+				  HAL_Delay(ERROR_DELAY);
+				  turn_off_red_led();
+				  turn_off_green_led();
+				  HAL_Delay(ERROR_DELAY);
+			  }
+			  send_message(buffer, pointer);
+			  pointer = 0;
+		  }
+	  } else if (0 == is_wait_unpressed) {
+		  is_wait_unpressed = 1;
+	  }
   }
   /* USER CODE END 3 */
 }
