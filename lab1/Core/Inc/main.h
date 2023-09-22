@@ -31,7 +31,6 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -57,8 +56,14 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define BUT_Pin GPIO_PIN_15
+#define BUT_GPIO_Port GPIOC
 #define LEDG_Pin GPIO_PIN_13
 #define LEDG_GPIO_Port GPIOD
+#define LEDY_Pin GPIO_PIN_14
+#define LEDY_GPIO_Port GPIOD
+#define LEDR_Pin GPIO_PIN_15
+#define LEDR_GPIO_Port GPIOD
 
 /* USER CODE BEGIN Private defines */
 
