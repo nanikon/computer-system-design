@@ -1,0 +1,6 @@
+leds.c:3:6:turn_on_green_led	1
+leds.c:7:6:turn_off_green_led	1
+leds.c:11:6:turn_on_yellow_led	1
+leds.c:15:6:turn_off_yellow_led	1
+leds.c:19:6:turn_on_red_led	1
+leds.c:23:6:turn_off_red_led	1

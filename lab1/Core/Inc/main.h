@@ -31,6 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "leds.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -60,10 +61,11 @@ void Error_Handler(void);
 #define BUT_GPIO_Port GPIOC
 #define LEDG_Pin GPIO_PIN_13
 #define LEDG_GPIO_Port GPIOD
-#define LEDY_Pin GPIO_PIN_14
-#define LEDY_GPIO_Port GPIOD
-#define LEDR_Pin GPIO_PIN_15
+#define LEDR_Pin GPIO_PIN_14
 #define LEDR_GPIO_Port GPIOD
+#define LEDY_Pin GPIO_PIN_15
+#define LEDY_GPIO_Port GPIOD
+
 
 /* USER CODE BEGIN Private defines */
 
