@@ -1,17 +1,17 @@
-17:57:32 **** Incremental Build of configuration Debug for project lab1 ****
-make -j16 all 
+12:50:05 **** Incremental Build of configuration Debug for project lab1 ****
+make -j8 all 
 arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F427xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
-arm-none-eabi-gcc -o "lab1.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\senin\Desktop\itmo\count-systems\computer-system-design\lab1\STM32F427VITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="lab1.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+arm-none-eabi-gcc -o "lab1.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\natan\STM32CubeIDE\computer-system-design\lab1\STM32F427VITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="lab1.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 Finished building target: lab1.elf
  
 arm-none-eabi-size   lab1.elf 
 arm-none-eabi-objdump -h -S  lab1.elf  > "lab1.list"
    text	   data	    bss	    dec	    hex	filename
-   9528	     20	   1644	  11192	   2bb8	lab1.elf
+  10216	     24	   1656	  11896	   2e78	lab1.elf
 Finished building: default.size.stdout
  
 Finished building: lab1.list
  
 
-17:57:33 Build Finished. 0 errors, 0 warnings. (took 613ms)
+12:50:07 Build Finished. 0 errors, 0 warnings. (took 2s.346ms)
 
