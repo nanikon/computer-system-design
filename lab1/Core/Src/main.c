@@ -26,7 +26,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define LONG_PERIOD_CT 2000
+#define LONG_PERIOD_CT 125
 #define BUFFER_SIZE 2048
 #define DEFAULT_DELAY 200
 #define ERROR_DELAY 600
@@ -75,6 +75,7 @@ void send_message(int buffer[], int pointer) {
 			HAL_Delay(COMMA_DELAY);
 		}
 		turn_off_green_led();
+		HAL_Delay(DEFAULT_DELAY);
 	}
 }
 /* USER CODE END 0 */
@@ -122,6 +123,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  printf("%i %i", is_pressed, is_wait_unpressed);
 	  if (0 == is_pressed && 0 == is_wait_unpressed) {
 		  if (count_tick > LONG_PERIOD_CT && 0 != pointer){
 			  is_reading = 0;
@@ -142,6 +144,7 @@ int main(void)
 			  turn_off_yellow_led();
 			  buffer[pointer] = 0;
 		  }
+		  count_tick = 0;
 		  pointer++;
 		  if (BUFFER_SIZE == pointer) {
 			  for (int i = 0; i < ERROR_COUNT; i++) {
@@ -155,8 +158,9 @@ int main(void)
 			  send_message(buffer, pointer);
 			  pointer = 0;
 		  }
-	  } else if (0 == is_wait_unpressed) {
+	  } else if (1 == is_pressed && 0 == is_wait_unpressed) {
 		  is_wait_unpressed = 1;
+		  count_tick = 0;
 	  }
   }
   /* USER CODE END 3 */
@@ -313,20 +317,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		int but = HAL_GPIO_ReadPin(BUT_GPIO_Port, BUT_Pin);
 		but = !but;
 
-		if(is_reading == 0){
+		if(is_reading == 1){
 			if(but == 1 && noisy == 0){
 				noisy = 1;
-			}
-			if(but == 1 && noisy == 1){
-				noisy = 1;
+			} else if(but == 1 && noisy == 1) {
 				is_pressed = 1;
 				count_tick++;
-			}
-			if(noisy == 1 && but == 0){
+			} else if(noisy == 1 && but == 0){
 				noisy = 0;
-			}
-			if(but == 1 && noisy == 1){
-				noisy = 0;
+			} else if(but == 0 && noisy == 0){
 				is_pressed = 0;
 				count_tick++;
 			}
