@@ -48,6 +48,8 @@
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim1;
 
+UART_HandleTypeDef huart6;
+
 /* USER CODE BEGIN PV */
 int is_pressed = 0; // нажата ли кнопка, устанавливается в таймере
 int is_wait_unpressed = 0; // ожидаем ли отпускание кнопки
@@ -60,6 +62,7 @@ int noisy = 0; // доп проверка для дребезга
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_USART6_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void send_message(int buffer[], int pointer);
 /* USER CODE END PFP */
@@ -109,6 +112,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM1_Init();
+  MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -123,8 +127,16 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  char s[] = "Hello world!\n";
+	  while (1)
+	  {
+		  HAL_UART_Transmit_IT( &huart6, (uint8_t *) s, sizeof( s ));
+		  HAL_UART_Receive_IT(&huart6, (uint8_t *) s, sizeof( s ));
+		  //HAL_UART_Transmit( &huart6, (uint8_t *) s, sizeof( s ), 10 );
+	  HAL_Delay( 3000 );
+	  }
 
-	  if (0 == is_pressed && 0 == is_wait_unpressed) {
+	  /*if (0 == is_pressed && 0 == is_wait_unpressed) {
 		  if (count_tick > LONG_PERIOD_CT && 0 != pointer){
 			  is_reading = 0;
 			  send_message(buffer, pointer);
@@ -162,7 +174,7 @@ int main(void)
 		  is_wait_unpressed = 1;
 		  count_tick = 0;
 	  }
-	  /*turn_on_green_led();
+	  turn_on_green_led();
 	  HAL_Delay(ERROR_DELAY);
 	  turn_off_green_led();
 	  HAL_Delay(ERROR_DELAY);*/
@@ -276,6 +288,39 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief USART6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART6_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART6_Init 0 */
+
+  /* USER CODE END USART6_Init 0 */
+
+  /* USER CODE BEGIN USART6_Init 1 */
+
+  /* USER CODE END USART6_Init 1 */
+  huart6.Instance = USART6;
+  huart6.Init.BaudRate = 115200;
+  huart6.Init.WordLength = UART_WORDLENGTH_8B;
+  huart6.Init.StopBits = UART_STOPBITS_1;
+  huart6.Init.Parity = UART_PARITY_NONE;
+  huart6.Init.Mode = UART_MODE_TX_RX;
+  huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart6.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART6_Init 2 */
+
+  /* USER CODE END USART6_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -314,6 +359,24 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART6)
+  {
+    // USART1 завершил прием данных
+	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
+  }
+}
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART6)
+  {
+    // USART2 завершил отправку данных
+	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
+  }
+}
+
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim->Instance==TIM1)
