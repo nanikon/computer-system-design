@@ -1,7 +1,7 @@
 main.c:69:6:send_message	3
 main.c:87:5:main	12
-main.c:173:6:SystemClock_Config	3
-main.c:215:13:MX_TIM1_Init	5
-main.c:279:13:MX_GPIO_Init	1
-main.c:313:6:HAL_TIM_PeriodElapsedCallback	11
-main.c:342:6:Error_Handler	1
+main.c:177:6:SystemClock_Config	3
+main.c:219:13:MX_TIM1_Init	5
+main.c:283:13:MX_GPIO_Init	1
+main.c:317:6:HAL_TIM_PeriodElapsedCallback	11
+main.c:346:6:Error_Handler	1

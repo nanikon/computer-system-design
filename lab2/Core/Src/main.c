@@ -123,7 +123,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  printf("%i %i", is_pressed, is_wait_unpressed);
+
 	  if (0 == is_pressed && 0 == is_wait_unpressed) {
 		  if (count_tick > LONG_PERIOD_CT && 0 != pointer){
 			  is_reading = 0;
@@ -162,6 +162,10 @@ int main(void)
 		  is_wait_unpressed = 1;
 		  count_tick = 0;
 	  }
+	  /*turn_on_green_led();
+	  HAL_Delay(ERROR_DELAY);
+	  turn_off_green_led();
+	  HAL_Delay(ERROR_DELAY);*/
   }
   /* USER CODE END 3 */
 }
@@ -229,7 +233,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 16000-1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 15-1 ;
+  htim1.Init.Period = 15-1;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
