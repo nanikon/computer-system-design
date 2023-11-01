@@ -1,0 +1,10 @@
+
+#include <map>
+using namespace std;
+
+map<char, >morze
+
+char* morze_to_str(int buffer[], int pointer){
+
+
+}
