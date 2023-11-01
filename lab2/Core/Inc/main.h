@@ -32,6 +32,7 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "leds.h"
+#include "uart_irq.h"
 #include <stdio.h>
 /* USER CODE END Includes */
 
