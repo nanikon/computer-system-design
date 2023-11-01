@@ -1,43 +1,35 @@
+char** morse_codes[26] = {
+	"01",
+	"1000",
+	"1010",
+	"100",
+	"0",
+	"0010",
+	"110",
+	"0000",
+	"00",
+	"1000",
+	"101",
+	"0100",
+	"11",
+	"10",
+	"111",
+	"0110",
+	"1101",
+	"010",
+	"000",
+	"1",
+	"001",
+	"0001",
+	"011",
+	"1001",
+	"1011",
+	"1100"
+};
 
-#include <map>
-using namespace std;
 
-typedef struct{
-	int* arr;
-	int len;
-}Morze;
-
-map<char, Morze> morze =
-		{
-		 {'a', {new int[2]{0, 1}, 2}},
-		 {'b', {new int[4]{1, 0, 0, 0}, 4}},
-		 {'c', {new int[4]{1, 0, 1, 0}, 4}},
-		 {'d', {new int[3]{1, 0, 0}, 3}},
-		 {'e', {new int[1]{0}, 1}},
-		 {'f', {new int[4]{0, 0, 1, 0}, 4}},
-		 {'g', {new int[3]{1, 1, 0}, 3}},
-		 {'h', {new int[4]{0, 0, 0, 0}, 4}},
-		 {'i', {new int[2]{0, 0}, 2}},
-		 {'j', {new int[4]{1, 0, 0, 0}, 4}},
-		 {'k', {new int[3]{1, 0, 1}, 3}},
-		 {'l', {new int[4]{0, 1, 0, 0}, 4}},
-		 {'m', {new int[2]{1, 1}, 2}},
-		 {'n', {new int[2]{1, 0}, 2}},
-		 {'o', {new int[3]{1, 1, 1}, 3}},
-		 {'p', {new int[4]{0, 1, 1, 0}, 4}},
-		 {'q', {new int[4]{1, 1, 0, 1}, 4}},
-		 {'r', {new int[3]{0, 1, 0}, 3}},
-		 {'s', {new int[3]{0, 0, 0}, 3}},
-		 {'t', {new int[1]{1}, 1}},
-		 {'u', {new int[3]{0, 0, 1}, 3}},
-		 {'v', {new int[4]{0, 0, 0, 1}, 4}},
-		 {'w', {new int[3]{0, 1, 1}, 3}},
-		 {'x', {new int[4]{1, 0, 0, 1}, 4}},
-		 {'y', {new int[4]{1, 0, 1, 1}, 4}},
-		 {'z', {new int[4]{1, 1, 0, 0}, 4}}
-		};
-Morze str_to_morze(char c){
-	return morze[c];
+char* str_to_morze(char c){
+	return morse_codes[(int)(c-'a')];
 }
 
 char morze_to_str(int b[], int p){

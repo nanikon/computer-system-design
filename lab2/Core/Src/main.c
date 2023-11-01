@@ -18,6 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <queue>
+useing namespace std;
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -57,6 +59,7 @@ int is_reading = 1; // есть ли что в памяти чтобы чита�
 int count_tick = 0; // кол-во тиков таймера в текущем состоянии is_pressed, устанавливается в таймере
 int noisy = 0; // доп проверка для дребезга
 int has_irq = 0; //есть ли прерывания сейчас
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -82,6 +85,18 @@ void send_message(int buffer[], int pointer) {
 		HAL_Delay(DEFAULT_DELAY);
 	}
 }
+
+void transmit_uart(const struct Status *status, char *buf, size_t size) {
+  if (has_irq) {
+    if (transmit_busy) {
+      //добавляем в буфер
+    } else {
+      HAL_UART_Transmit_IT(&huart6, buf, size);
+      transmit_busy = true;
+    }
+  }else HAL_UART_Transmit(&huart6, buf, size, 100);
+}
+
 /* USER CODE END 0 */
 
 /**
