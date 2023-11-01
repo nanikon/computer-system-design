@@ -123,6 +123,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  printf("%i %i", is_pressed, is_wait_unpressed);
 	  if (0 == is_pressed && 0 == is_wait_unpressed) {
 		  if (count_tick > LONG_PERIOD_CT && 0 != pointer){
 			  is_reading = 0;
