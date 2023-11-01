@@ -1,0 +1,24 @@
+
+#include <map>
+using namespace std;
+typedef struct{
+	int[] arr;
+	int len;
+}Morze;
+
+map<char, Morze> morze =
+		{{'a', {[0, 1], 1}},
+		 {'b', [1, 0, 0, 0]},
+		 {'c', [1, 0, 1, 0]},
+		 {'d', [1, 0, 0]},
+		 {'e', [0]},
+		 {'f', [0, 0, 1, 0]},
+		 {'g', [1, 0, 0, 0]},
+		 {'b', [1, 0, 0, 0]},
+		 {'b', [1, 0, 0, 0]},
+		 {'b', [1, 0, 0, 0]},
+		 {"!", "!"}};
+
+char* morze_to_str(int buffer[], int pointer){
+
+}

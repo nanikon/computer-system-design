@@ -1,0 +1,13 @@
+
+#include <map>
+/*
+ * morze.c
+ *
+ *  Created on: Nov 1, 2023
+ *      Author: senin
+ */
+
+char* morze_to_str(int buffer[], int pointer){
+
+
+}
