@@ -28,8 +28,10 @@ void send(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size) {
 	if (buf_size > WRITE_BUFFER_SIZE - end_write) {
 		size_t first_size = WRITE_BUFFER_SIZE - end_write;
 		if (first_size > 0) {
-
+			memcpy(buffer_to_write + end_write, buffer, first_size);
 		}
+		memcpy(buffer_to_write, buffer, buf_size - first_size);
+		end_write = buf_size - first_size;
 	} else {
 		memcpy(buffer_to_write + end_write, buffer, buf_size);
 		end_write += buf_size;
