@@ -28,8 +28,21 @@ char** morse_codes[26] = {
 };
 
 
-char* str_to_morze(char c){
+char* char_to_morze(char c){
 	return morse_codes[(int)(c-'a')];
+}
+
+int str_to_morze(char* buf_in, int ptr_in, int* buf_out, int ptr_out){
+	for(int i = 0; i < ptr_in; i++){
+        char* c = str_to_morze(buf_in[i]);
+        int len = strlen(c);
+        for (int j = 0; j < len; j++){
+			if(j > ptr_out){ // проверяем, что буфер не преполнился
+				buf_out[j] = c - '0';
+			}else return -1;
+        }
+    }
+	return 1;
 }
 
 char morze_to_str(int b[], int p){
