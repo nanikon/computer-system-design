@@ -145,8 +145,8 @@ int main(void)
 	  HAL_Delay( 3000 );
 	  }
     */
-    if(has_irq == 1) HAL_NVIC_EnableIRQ(IRQn_Type IRQn); // enable interrupts
-		else	HAL_NVIC_DisableIRQ(IRQn_Type IRQn); // disable interrupts
+    if(has_irq == 1) NVIC_EnableIRQ(USART1_IRQn); // enable interrupts
+		else	NVIC_DisableIRQ(USART1_IRQn); // disable interrupts
 
 	  char_r_ptr += recive_uart(&huart6, char_r_buf + char_r_ptr, BUFFER_SIZE - char_r_ptr, has_irq); //читаем не пришло ли сообщение
 
