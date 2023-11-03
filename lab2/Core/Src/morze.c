@@ -1,4 +1,6 @@
-char** morse_codes[26] = {
+#include "string.h"
+
+char* morse_codes[26] = {
 	"01",
 	"1000",
 	"1010",
@@ -34,11 +36,11 @@ char* char_to_morze(char c){
 
 int str_to_morze(char* buf_in, int ptr_in, int* buf_out, int ptr_out){
 	for(int i = 0; i < ptr_in; i++){
-        char* c = str_to_morze(buf_in[i]);
+        char* c = char_to_morze(buf_in[i]);
         int len = strlen(c);
         for (int j = 0; j < len; j++){
 			if(j > ptr_out){ // проверяем, что буфер не преполнился
-				buf_out[j] = c - '0';
+				buf_out[j] = (int)(c - '0');
 			}else return -1;
         }
     }

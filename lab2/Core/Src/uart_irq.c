@@ -5,6 +5,7 @@
  *      Author: natan
  */
 #include "uart_irq.h"
+#include "string.h"
 
 uint8_t buffer_to_write[WRITE_BUFFER_SIZE] = {0}; // буфер на передачу
 size_t start_write = 0; // номер символа с которого начинать передачу
@@ -40,11 +41,11 @@ void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size, int 
 	if (state != HAL_UART_STATE_BUSY_TX) {
 		// свободно, начать передачу
 		 if (has_irq == 1) send_buffer_if_not_empty_IT(huart);
-		 else HAL_UART_Transmit(&huart, buffer, buf_size, 0);
+		 else HAL_UART_Transmit(huart, buffer, buf_size, 0);
 	}
 }
 
-int recive_uart(UART_HandleTypeDef *huart, char buffer, size_t size, int has_irq){ //проверить, что таким образом я считала всё
+void recive_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t size, int has_irq){ //проверить, что таким образом я считала всё
 	if (has_irq == 1) {
 		HAL_UART_Receive_IT(huart, buffer, size);
 	}else{
@@ -52,7 +53,7 @@ int recive_uart(UART_HandleTypeDef *huart, char buffer, size_t size, int has_irq
 		switch (stat) {
 			case HAL_OK: {
 				send_uart(huart, buffer, size, has_irq);
-				return size;
+				return;
 			}
 			case HAL_ERROR:
 			case HAL_BUSY:

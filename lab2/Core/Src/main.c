@@ -18,14 +18,12 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <queue>
-#include "uart_irq.c"
-#include "morze.c"
-useing namespace std;
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "leds.c"
+#include "morze.c"
+#include "uart_irq.c"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -69,6 +67,9 @@ int comma_delay = 0; // пауза точки
 int is_green = 0; // горит ли зелёный светодиод
 int default_delay = 0; //пауза между символами
 
+
+int int_w_buf[BUFFER_SIZE] = {0};
+int int_w_ptr = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -120,8 +121,6 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  int int_w_buf[BUFFER_SIZE] = {0};
-  int int_w_ptr = 0;
   int last_letter_ptr = 0; // указатель на последний символ ещё не прочитанного слова
 
   char char_w_buf[BUFFER_SIZE] = {0};
@@ -148,7 +147,7 @@ int main(void)
     if(has_irq == 1) NVIC_EnableIRQ(USART1_IRQn); // enable interrupts
 		else	NVIC_DisableIRQ(USART1_IRQn); // disable interrupts
 
-	  char_r_ptr += recive_uart(&huart6, char_r_buf + char_r_ptr, BUFFER_SIZE - char_r_ptr, has_irq); //читаем не пришло ли сообщение
+	  char_r_ptr += recive_uart(&huart6, (char*)(char_r_buf + char_r_ptr), BUFFER_SIZE - char_r_ptr, has_irq); //читаем не пришло ли сообщение
 
 	  if (char_r_ptr > 0){ //есть что сконвертировать в 0 и 1
       str_to_morze(char_r_buf, char_r_ptr, int_w_buf, int_w_ptr);
@@ -387,21 +386,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
   }
 }
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-  if (huart->Instance == USART6)
-  {
-    // USART2 завершил отправку данных
-	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
-  }
-}
 
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
   if (huart->Instance == USART6)
   {
       // USART6 завершил отправку данных
-	  send_buffer_if_not_empty(huart);
+	  send_buffer_if_not_empty_IT(huart);
 	  //HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
   }
 }
@@ -437,7 +427,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 						is_green = 0;
 					}
 				}else if(comma_delay > 0){
-					if (comma_dalay < COMMA_DELAY){ // ждём пока пауза не пройдёт
+					if (comma_delay < COMMA_DELAY){ // ждём пока пауза не пройдёт
 						comma_delay++;
 					}else{ // пауза прошла -- меняем сигнал
 						comma_delay = 0;
@@ -451,7 +441,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					default_delay = 0;
 					turn_on_green_led();
 					is_green = 1;
-					if(buffer[current_write_ptr] == 1){
+					if(int_w_buf[current_write_ptr] == 1){
 						dash_delay = 1;
 					}else{
 						comma_delay = 1;
@@ -493,7 +483,7 @@ void Error_Handler(void)
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
-  * @param  file: int_w_ptr to the source file name
+  * @param  file: pointer to the source file name
   * @param  line: assert_param error line source number
   * @retval None
   */

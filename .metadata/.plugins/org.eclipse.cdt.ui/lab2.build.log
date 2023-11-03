@@ -1,0 +1,56 @@
+10:53:39 **** Incremental Build of configuration Debug for project lab2 ****
+make -j16 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F427xx -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+../Core/Src/main.c: In function 'main':
+../Core/Src/main.c:150:39: warning: pointer targets in passing argument 2 of 'recive_uart' differ in signedness [-Wpointer-sign]
+  150 |    char_r_ptr += recive_uart(&huart6, (char*)(char_r_buf + char_r_ptr), BUFFER_SIZE - char_r_ptr, has_irq); //читаем не пришло ли сообщение
+      |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      |                                       |
+      |                                       char *
+In file included from ../Core/Src/main.c:26:
+../Core/Src/uart_irq.c:48:54: note: expected 'uint8_t *' {aka 'unsigned char *'} but argument is of type 'char *'
+   48 | void recive_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t size, int has_irq){ //проверить, что таким образом я считала всё
+      |                                             ~~~~~~~~~^~~~~~
+../Core/Src/main.c:150:18: error: void value not ignored as it ought to be
+  150 |    char_r_ptr += recive_uart(&huart6, (char*)(char_r_buf + char_r_ptr), BUFFER_SIZE - char_r_ptr, has_irq); //читаем не пришло ли сообщение
+      |                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../Core/Src/main.c:153:20: warning: passing argument 1 of 'str_to_morze' from incompatible pointer type [-Wincompatible-pointer-types]
+  153 |       str_to_morze(char_r_buf, char_r_ptr, int_w_buf, int_w_ptr);
+      |                    ^~~~~~~~~~
+      |                    |
+      |                    char **
+In file included from ../Core/Src/main.c:25:
+../Core/Src/morze.c:37:24: note: expected 'char *' but argument is of type 'char **'
+   37 | int str_to_morze(char* buf_in, int ptr_in, int* buf_out, int ptr_out){
+      |                  ~~~~~~^~~~~~
+../Core/Src/main.c:157:25: warning: passing argument 2 of 'send_uart' from incompatible pointer type [-Wincompatible-pointer-types]
+  157 |      send_uart(&huart6, int_w_buf, int_w_ptr, has_irq);
+      |                         ^~~~~~~~~
+      |                         |
+      |                         int *
+In file included from ../Core/Src/main.c:26:
+../Core/Src/uart_irq.c:26:52: note: expected 'uint8_t *' {aka 'unsigned char *'} but argument is of type 'int *'
+   26 | void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size, int has_irq) {
+      |                                           ~~~~~~~~~^~~~~~
+../Core/Src/main.c:171:6: error: 'buffer' undeclared (first use in this function); did you mean 'setbuffer'?
+  171 |      buffer[int_w_ptr] = 1;
+      |      ^~~~~~
+      |      setbuffer
+../Core/Src/main.c:171:6: note: each undeclared identifier is reported only once for each function it appears in
+../Core/Src/main.c:189:25: warning: passing argument 2 of 'send_uart' from incompatible pointer type [-Wincompatible-pointer-types]
+  189 |      send_uart(&huart6, int_w_buf, int_w_ptr, has_irq); //посылаем сообщение
+      |                         ^~~~~~~~~
+      |                         |
+      |                         int *
+In file included from ../Core/Src/main.c:26:
+../Core/Src/uart_irq.c:26:52: note: expected 'uint8_t *' {aka 'unsigned char *'} but argument is of type 'int *'
+   26 | void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size, int has_irq) {
+      |                                           ~~~~~~~~~^~~~~~
+../Core/Src/main.c:126:8: warning: variable 'char_w_buf' set but not used [-Wunused-but-set-variable]
+  126 |   char char_w_buf[BUFFER_SIZE] = {0};
+      |        ^~~~~~~~~~
+make: *** [Core/Src/subdir.mk:43: Core/Src/main.o] Error 1
+"make -j16 all" terminated with exit code 2. Build might be incomplete.
+
+10:53:39 Build Failed. 3 errors, 5 warnings. (took 235ms)
+
