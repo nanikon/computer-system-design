@@ -7,25 +7,41 @@
 #include "uart_irq.h"
 #include "string.h"
 
-uint8_t buffer_to_write[WRITE_BUFFER_SIZE] = {0}; // буфер на передачу
+char buffer_to_write[WRITE_BUFFER_SIZE] = {0}; // буфер на передачу
 size_t start_write = 0; // номер символа с которого начинать передачу
 size_t end_write = 0; // номер символа следом за последним символом, который надо передать
 
-static void send_buffer_if_not_empty_IT(UART_HandleTypeDef *huart) {
+void send_buffer_if_not_empty_IT(UART_HandleTypeDef *huart){
+	
 	if (end_write < start_write){
 		// буфер закольцован, надо передать данные до его конца, и следующим вызовом с начала
-		HAL_UART_Transmit_IT(huart, buffer_to_write + start_write, WRITE_BUFFER_SIZE - start_write);
+		HAL_UART_Transmit_IT(huart, (uint8_t*)(buffer_to_write + start_write), WRITE_BUFFER_SIZE - start_write);
 		start_write = 0;
 	} else if (end_write > start_write) {
 		// стандартная ситуация, просто загружаем данные в отправку
-		HAL_UART_Transmit_IT(huart, buffer_to_write + start_write, end_write - start_write);
+		HAL_UART_Transmit_IT(huart, (uint8_t*)(buffer_to_write + start_write), end_write - start_write);
+		// если равны то нет данных на отправку, завершаемся
 	}
-	// если равны то нет данных на отправку, завершаемся
+	
 }
 
-void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size, int has_irq) {
+void send_buffer_if_not_empty(UART_HandleTypeDef *huart){
+	char state = HAL_UART_GetState(huart);
+	if (state != HAL_UART_STATE_BUSY_TX) {
+		if (end_write < start_write){
+			// буфер закольцован, надо передать данные до его конца, и следующим вызовом с начала
+			HAL_UART_Transmit(huart, (uint8_t*)(buffer_to_write + start_write), WRITE_BUFFER_SIZE - start_write, 100);
+			start_write = 0;
+		} else if (end_write > start_write) {
+			// стандартная ситуация, просто загружаем данные в отправку
+			HAL_UART_Transmit(huart, (uint8_t*)(buffer_to_write + start_write), end_write - start_write, 100);
+		}
+	}
+}
+
+void send_uart(UART_HandleTypeDef *huart, char* buffer, size_t buf_size, int has_irq) {
 	// добавить данные в буффер
-	uint8_t state = HAL_UART_GetState(huart);
+	char state = HAL_UART_GetState(huart);
 	if (buf_size > WRITE_BUFFER_SIZE - end_write) {
 		size_t first_size = WRITE_BUFFER_SIZE - end_write;
 		if (first_size > 0) {
@@ -40,16 +56,15 @@ void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size, int 
 
 	if (state != HAL_UART_STATE_BUSY_TX) {
 		// свободно, начать передачу
-		 if (has_irq == 1) send_buffer_if_not_empty_IT(huart);
-		 else HAL_UART_Transmit(huart, buffer, buf_size, 0);
+		if (has_irq == 1) send_buffer_if_not_empty_IT(huart);
 	}
 }
 
-void recive_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t size, int has_irq){ //проверить, что таким образом я считала всё
+void recive_uart(UART_HandleTypeDef *huart, char* buffer, size_t size, int has_irq){ //проверить, что таким образом я считала всё
 	if (has_irq == 1) {
-		HAL_UART_Receive_IT(huart, buffer, size);
+		HAL_UART_Receive_IT(huart, (uint8_t*)buffer, size);
 	}else{
-		HAL_StatusTypeDef stat = HAL_UART_Receive(huart, buffer, size, 0);
+		HAL_StatusTypeDef stat = HAL_UART_Receive(huart, (uint8_t*)buffer, size, 0);
 		switch (stat) {
 			case HAL_OK: {
 				send_uart(huart, buffer, size, has_irq);

@@ -1,4 +1,4 @@
-#include "string.h"
+#include "morze.h"
 
 char* morse_codes[26] = {
 	"01",
@@ -35,7 +35,9 @@ char* char_to_morze(char c){
 }
 
 int str_to_morze(char* buf_in, int ptr_in, int* buf_out, int ptr_out){
+	int res = 1;
 	for(int i = 0; i < ptr_in; i++){
+		if (buf_in[i] == '+') res = (res + 1) % 2;
         char* c = char_to_morze(buf_in[i]);
         int len = strlen(c);
         for (int j = 0; j < len; j++){
@@ -44,7 +46,7 @@ int str_to_morze(char* buf_in, int ptr_in, int* buf_out, int ptr_out){
 			}else return -1;
         }
     }
-	return 1;
+	return res; // возвращает 1, если состояние has_irq осталось тем же, 0 - если изменилось
 }
 
 char morze_to_str(int b[], int p){
