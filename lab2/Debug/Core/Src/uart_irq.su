@@ -1,0 +1,3 @@
+../Core/Src/uart_irq.c:14:13:send_buffer_if_not_empty_IT	16	static
+../Core/Src/uart_irq.c:26:6:send_uart	32	static
+../Core/Src/uart_irq.c:48:6:recive_uart	32	static

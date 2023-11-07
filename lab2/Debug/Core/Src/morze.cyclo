@@ -1,0 +1,3 @@
+morze.c:33:7:char_to_morze	1
+morze.c:37:5:str_to_morze	4
+morze.c:50:6:morze_to_str	40

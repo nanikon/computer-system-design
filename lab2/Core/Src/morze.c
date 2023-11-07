@@ -1,4 +1,6 @@
-char** morse_codes[26] = {
+#include "morze.h"
+
+char* morse_codes[26] = {
 	"01",
 	"1000",
 	"1010",
@@ -28,8 +30,23 @@ char** morse_codes[26] = {
 };
 
 
-char* str_to_morze(char c){
+char* char_to_morze(char c){
 	return morse_codes[(int)(c-'a')];
+}
+
+int str_to_morze(char* buf_in, int ptr_in, int* buf_out, int ptr_out){
+	int res = 1;
+	for(int i = 0; i < ptr_in; i++){
+		if (buf_in[i] == '+') res = (res + 1) % 2;
+        char* c = char_to_morze(buf_in[i]);
+        int len = strlen(c);
+        for (int j = 0; j < len; j++){
+			if(j > ptr_out){ // проверяем, что буфер не преполнился
+				buf_out[j] = (int)(c - '0');
+			}else return -1;
+        }
+    }
+	return res; // возвращает 1, если состояние has_irq осталось тем же, 0 - если изменилось
 }
 
 char morze_to_str(int b[], int p){

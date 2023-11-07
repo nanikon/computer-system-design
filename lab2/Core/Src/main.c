@@ -18,17 +18,18 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <queue>
-useing namespace std;
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "leds.h"
+#include "morze.h"
+#include "uart_irq.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 #define LONG_PERIOD_CT 125
+#define BETWEEN_LETTERS_PERIOD_CT 500
 #define BUFFER_SIZE 2048
 #define DEFAULT_DELAY 200
 #define ERROR_DELAY 600
@@ -56,10 +57,22 @@ UART_HandleTypeDef huart6;
 int is_pressed = 0; // нажата ли кнопка, устанавливается в таймере
 int is_wait_unpressed = 0; // ожидаем ли отпускание кнопки
 int is_reading = 1; // есть ли что в памяти чтобы читать (можно pointer сделать глобальным и проверять на ноль
+int writing_ptr = 0; //указатель на текущий конец сообщения
 int count_tick = 0; // кол-во тиков таймера в текущем состоянии is_pressed, устанавливается в таймере
 int noisy = 0; // доп проверка для дребезга
 int has_irq = 0; //есть ли прерывания сейчас
+int current_write_ptr = 0; // в каком месте буфера мы сейчас печатаем
+int dash_delay = 0; // пауза тире
+int comma_delay = 0; // пауза точки
+int is_green = 0; // горит ли зелёный светодиод
+int default_delay = 0; //пауза между символами
 
+
+int buffer[BUFFER_SIZE] = {0}; //нули и единицы с кнопки
+int buf_ptr = 0;
+
+int int_w_buf[BUFFER_SIZE] = {0}; //конвертированные данные с uart
+int int_w_ptr = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -68,34 +81,10 @@ static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART6_UART_Init(void);
 /* USER CODE BEGIN PFP */
-void send_message(int buffer[], int pointer);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void send_message(int buffer[], int pointer) {
-	for (int i = 0; i < pointer; i++) {
-		turn_on_green_led();
-		if (1 == buffer[i]) {
-			HAL_Delay(DASH_DELAY);
-		} else {
-			HAL_Delay(COMMA_DELAY);
-		}
-		turn_off_green_led();
-		HAL_Delay(DEFAULT_DELAY);
-	}
-}
-
-void transmit_uart(const struct Status *status, char *buf, size_t size) {
-  if (has_irq) {
-    if (transmit_busy) {
-      //добавляем в буфер
-    } else {
-      HAL_UART_Transmit_IT(&huart6, buf, size);
-      transmit_busy = true;
-    }
-  }else HAL_UART_Transmit(&huart6, buf, size, 100);
-}
 
 /* USER CODE END 0 */
 
@@ -135,47 +124,62 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  int buffer[BUFFER_SIZE] = {0};
-  int pointer = 0;
+
+  char char_w_buf[BUFFER_SIZE] = {0};
+  int char_w_prt = 0;
+
+  char char_r_buf[BUFFER_SIZE] = {0};
+  int char_r_ptr = 0;
+  
   HAL_TIM_Base_Start_IT((TIM_HandleTypeDef *)&htim1);
-  while (1)
-  {
-    /* USER CODE END WHILE */
+  while (1){
+	  recive_uart(&huart6, (char*)(char_r_buf + char_r_ptr), BUFFER_SIZE - char_r_ptr, has_irq); //читаем не пришло ли сообщение
 
-    /* USER CODE BEGIN 3 */
-	  char s[] = "Hello world!\n";
-	  while (1)
-	  {
-		  HAL_UART_Transmit_IT( &huart6, (uint8_t *) s, sizeof( s ));
-		  HAL_UART_Receive_IT(&huart6, (uint8_t *) s, sizeof( s ));
-		  //HAL_UART_Transmit( &huart6, (uint8_t *) s, sizeof( s ), 10 );
-	  HAL_Delay( 3000 );
-	  }
-
-	  /*if (0 == is_pressed && 0 == is_wait_unpressed) {
-		  if (count_tick > LONG_PERIOD_CT && 0 != pointer){
-			  is_reading = 0;
-			  send_message(buffer, pointer);
-			  pointer = 0;
-			  is_reading = 1;
-		  }
-	  } else if (0 == is_pressed && 1 == is_wait_unpressed) {
+	  if (char_r_ptr > 0){ //есть что сконвертировать в 0 и 1
+      //TODO: disable irq
+      int res = str_to_morze(char_r_buf, char_r_ptr, int_w_buf, int_w_ptr);
+      char_r_ptr = 0; // прочитали весь буффер
+      
+      if (res == 0){ 
+        has_irq = (has_irq + 1) % 2;
+        if (has_irq == 1){
+          send_buffer_if_not_empty_IT(&huart6);
+          NVIC_EnableIRQ(USART1_IRQn); // enable interrupts
+        }else NVIC_DisableIRQ(USART1_IRQn); // disable interrupts
+      }
+      writing_ptr = int_w_ptr;
+      //TODO: enable irq
+    }else if (0 == is_pressed && 0 == is_wait_unpressed) { //если кнопка не нажата
+		  if (count_tick > LONG_PERIOD_CT && 0 != buf_ptr){ //после длинной паузы печатаем сообщение
+			  send_uart(&huart6, char_w_buf, char_w_prt, has_irq);
+        char_w_prt = 0;
+		  }else if (count_tick > BETWEEN_LETTERS_PERIOD_CT){ // пришла длинная пауза после буквы
+        //конвертируем очередную букву и кладём в буфер на отправку
+        char_w_buf[char_w_prt] = morze_to_str(buffer, buf_ptr);
+        char_w_prt++;
+        buf_ptr = 0;
+        if (char_w_prt == BUFFER_SIZE){
+          send_uart(&huart6, char_w_buf, char_w_prt, has_irq);
+          char_w_prt = 0;
+        }
+      }
+	  } else if (0 == is_pressed && 1 == is_wait_unpressed) { //кнопку отпустили
 		  is_wait_unpressed = 0;
-		  if (count_tick > LONG_PERIOD_CT) {
+       if (count_tick > LONG_PERIOD_CT) { // вносим 1 или 0 в буфер на отправку
 			  turn_on_red_led();
 			  HAL_Delay(DEFAULT_DELAY);
 			  turn_off_red_led();
-			  buffer[pointer] = 1;
+			  buffer[buf_ptr] = 1;
 		  } else {
 			  turn_on_yellow_led();
 			  HAL_Delay(DEFAULT_DELAY);
 			  turn_off_yellow_led();
-			  buffer[pointer] = 0;
+			  buffer[buf_ptr] = 0;
 		  }
 		  count_tick = 0;
-		  pointer++;
-		  if (BUFFER_SIZE == pointer) {
-			  for (int i = 0; i < ERROR_COUNT; i++) {
+		  buf_ptr++;
+		  if (BUFFER_SIZE == buf_ptr) {
+			  for (int i = 0; i < ERROR_COUNT; i++) { //если буфер переполнится
 				  turn_on_red_led();
 				  turn_on_green_led();
 				  HAL_Delay(ERROR_DELAY);
@@ -183,18 +187,16 @@ int main(void)
 				  turn_off_green_led();
 				  HAL_Delay(ERROR_DELAY);
 			  }
-			  send_message(buffer, pointer);
-			  pointer = 0;
+        buf_ptr = 0;
 		  }
-	  } else if (1 == is_pressed && 0 == is_wait_unpressed) {
+	  } else if (1 == is_pressed && 0 == is_wait_unpressed) { //кнопку нажали -- ждём когда отпустят
 		  is_wait_unpressed = 1;
 		  count_tick = 0;
 	  }
-	  turn_on_green_led();
-	  HAL_Delay(ERROR_DELAY);
-	  turn_off_green_led();
-	  HAL_Delay(ERROR_DELAY);*/
+
+	  send_buffer_if_not_empty(&huart6);
   }
+  
   /* USER CODE END 3 */
 }
 
@@ -383,20 +385,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
   }
 }
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
   if (huart->Instance == USART6)
   {
-    // USART2 завершил отправку данных
-	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
+      // USART6 завершил отправку данных
+	  send_buffer_if_not_empty_IT(huart);
   }
 }
 
-
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	if(htim->Instance==TIM1)
-	{
+	if(htim->Instance==TIM1){
 		int but = HAL_GPIO_ReadPin(BUT_GPIO_Port, BUT_Pin);
 		but = !but;
 
@@ -413,6 +413,50 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				count_tick++;
 			}
 		}
+
+    if(writing_ptr > 0){ //выводим
+			if(is_green){ //надо выключить
+				if (dash_delay > 0){
+					if (dash_delay < DASH_DELAY){ // ждём пока пауза не пройдёт
+						dash_delay++;
+					}else{ // пауза прошла -- меняем сигнал
+						dash_delay = 0;
+						turn_off_green_led();
+						is_green = 0;
+					}
+				}else if(comma_delay > 0){
+					if (comma_delay < COMMA_DELAY){ // ждём пока пауза не пройдёт
+						comma_delay++;
+					}else{ // пауза прошла -- меняем сигнал
+						comma_delay = 0;
+						turn_off_green_led();
+						is_green = 0;
+					}
+				}
+			}else{ //надо включить
+				if (default_delay > DEFAULT_DELAY){ // ждём следующего момента выводить?
+					// зажигаем зелёный цвет и включаем флаги ожидания
+					default_delay = 0;
+					turn_on_green_led();
+					is_green = 1;
+					if(int_w_buf[current_write_ptr] == 1){
+						dash_delay = 1;
+					}else{
+						comma_delay = 1;
+					}
+				}else{ // пока ещё ждём
+					default_delay++;
+				}
+				
+			}
+
+			if(current_write_ptr == writing_ptr){ // TODO: проверить, что прерывания не ломают writing_ptr
+        current_write_ptr = 0;
+        writing_ptr = 0;
+      }
+			current_write_ptr++;
+		}
+
 	}
 
 }
