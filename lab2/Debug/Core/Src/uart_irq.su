@@ -1,3 +1,4 @@
-../Core/Src/uart_irq.c:14:13:send_buffer_if_not_empty_IT	16	static
-../Core/Src/uart_irq.c:26:6:send_uart	32	static
-../Core/Src/uart_irq.c:48:6:recive_uart	32	static
+../Core/Src/uart_irq.c:14:6:send_buffer_if_not_empty_IT	16	static
+../Core/Src/uart_irq.c:28:6:send_buffer_if_not_empty	24	static
+../Core/Src/uart_irq.c:42:6:send_uart	32	static
+../Core/Src/uart_irq.c:63:6:recive_uart	32	static
