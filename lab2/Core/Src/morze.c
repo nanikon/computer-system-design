@@ -1,6 +1,6 @@
 #include "morze.h"
 
-char* morse_codes[26] = {
+char* morse_codes[28] = {
 	"01",
 	"1000",
 	"1010",
@@ -26,12 +26,19 @@ char* morse_codes[26] = {
 	"011",
 	"1001",
 	"1011",
-	"1100"
+	"1100",
+	"-",
+	"+"
 };
 
 
-char* char_to_morze(char c){
-	return morse_codes[(int)(c-'a')];
+char* char_to_morze(char c) {
+	int ptr = (int)(c-'a');
+	if (c == '+') return '+';
+	if ( ptr > 28 || ptr < 0) {
+		return morse_codes[27]; // cимвол не из алфавита
+	}
+	return morse_codes[ptr];
 }
 
 int str_to_morze(char* buf_in, int ptr_in, int* buf_out, int ptr_out){
@@ -46,7 +53,7 @@ int str_to_morze(char* buf_in, int ptr_in, int* buf_out, int ptr_out){
 			}else return -1;
         }
     }
-	return res; // возвращает 1, если состояние has_irq осталось тем же, 0 - если изменилось
+	return res; // возвращает 1, если состояние has_irq осталось тем же, 0 - если изменилось, -1 если
 }
 
 char morze_to_str(int b[], int p){

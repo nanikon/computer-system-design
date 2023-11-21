@@ -124,8 +124,33 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint8_t str = '2';
+  has_irq = 0;
 
-  char char_w_buf[BUFFER_SIZE] = {0};
+  while (1)
+  {
+	  int ret = receive_uart(&huart6, &str, has_irq);
+	  if (ret > 0){ //есть что сконвертировать в 0 и 1
+			char* res = char_to_morze(str);
+			if (res[0] == '+') {
+				has_irq = (has_irq + 1) % 2;
+				if (has_irq == 1) {
+					send_buffer_if_not_empty_IT(&huart6);
+					NVIC_EnableIRQ(USART6_IRQn); // enable interrupts
+				} else NVIC_DisableIRQ(USART6_IRQn); // disable interrupts
+			}else if(res[0] == '-') {
+	//			char i = '!';
+	//			send_uart(&huart6, &i , 1, has_irq);
+			}
+
+
+		}
+
+	  HAL_Delay(100);
+	  send_buffer_if_not_empty(&huart6);
+  }
+
+  /*char char_w_buf[BUFFER_SIZE] = {0};
   int char_w_prt = 0;
 
   char char_r_buf[BUFFER_SIZE] = {0};
@@ -144,8 +169,8 @@ int main(void)
         has_irq = (has_irq + 1) % 2;
         if (has_irq == 1){
           send_buffer_if_not_empty_IT(&huart6);
-          NVIC_EnableIRQ(USART1_IRQn); // enable interrupts
-        }else NVIC_DisableIRQ(USART1_IRQn); // disable interrupts
+          NVIC_EnableIRQ(USART6_IRQn); // enable interrupts
+        }else NVIC_DisableIRQ(USART6_IRQn); // disable interrupts
       }
       writing_ptr = int_w_ptr;
       //TODO: enable irq
@@ -195,7 +220,7 @@ int main(void)
 	  }
 
 	  send_buffer_if_not_empty(&huart6);
-  }
+  }*/
   
   /* USER CODE END 3 */
 }
@@ -377,22 +402,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-  if (huart->Instance == USART6)
-  {
-    // USART1 завершил прием данных
-	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
-  }
-}
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
-  if (huart->Instance == USART6)
-  {
-      // USART6 завершил отправку данных
-	  send_buffer_if_not_empty_IT(huart);
-  }
-}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
