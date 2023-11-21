@@ -7,7 +7,7 @@
 #include "uart_irq.h"
 #include "string.h"
 
-char buffer_to_write[WRITE_BUFFER_SIZE] = {0}; // буфер на передачу
+uint8_t buffer_to_write[WRITE_BUFFER_SIZE] = {0}; // буфер на передачу
 size_t start_write = 0; // номер символа с которого начинать передачу
 size_t end_write = 0; // номер символа следом за последним символом, который надо передать
 
@@ -64,7 +64,7 @@ void send_buffer_if_not_empty(UART_HandleTypeDef *huart){
 	}
 }
 
-void send_uart(UART_HandleTypeDef *huart, char* buffer, size_t buf_size, int has_irq) {
+void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size, int has_irq) {
 	// добавить данные в буффер
 	char state = HAL_UART_GetState(huart);
 	if (buf_size > WRITE_BUFFER_SIZE - end_write) {
@@ -100,6 +100,7 @@ int receive_uart(UART_HandleTypeDef *huart, uint8_t* buffer, int has_irq){ //п�
 			return 1;
 		}
 	} else {
+		bzero(buffer, 1);
 		HAL_StatusTypeDef stat = HAL_UART_Receive(huart, (uint8_t*)buffer, 1, 0);
 		switch (stat) {
 			case HAL_OK: {
@@ -121,7 +122,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   if (huart->Instance == USART6)
   {
     // USART6 завершил прием данных
-	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
 	  is_read_buffer_full = true;
 	  is_wait_read = false;
   }

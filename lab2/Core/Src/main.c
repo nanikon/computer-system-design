@@ -29,13 +29,13 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 #define LONG_PERIOD_CT 125
-#define BETWEEN_LETTERS_PERIOD_CT 500
+#define BETWEEN_LETTERS_PERIOD_CT 250
 #define BUFFER_SIZE 2048
-#define DEFAULT_DELAY 200
+#define DEFAULT_DELAY 50
 #define ERROR_DELAY 600
 #define ERROR_COUNT 2
 #define COMMA_DELAY DEFAULT_DELAY
-#define DASH_DELAY 1000
+#define DASH_DELAY 100
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -57,11 +57,9 @@ UART_HandleTypeDef huart6;
 int is_pressed = 0; // нажата ли кнопка, устанавливается в таймере
 int is_wait_unpressed = 0; // ожидаем ли отпускание кнопки
 int is_reading = 1; // есть ли что в памяти чтобы читать (можно pointer сделать глобальным и проверять на ноль
-int writing_ptr = 0; //указатель на текущий конец сообщения
 int count_tick = 0; // кол-во тиков таймера в текущем состоянии is_pressed, устанавливается в таймере
 int noisy = 0; // доп проверка для дребезга
 int has_irq = 0; //есть ли прерывания сейчас
-int current_write_ptr = 0; // в каком месте буфера мы сейчас печатаем
 int dash_delay = 0; // пауза тире
 int comma_delay = 0; // пауза точки
 int is_green = 0; // горит ли зелёный светодиод
@@ -73,6 +71,8 @@ int buf_ptr = 0;
 
 int int_w_buf[BUFFER_SIZE] = {0}; //конвертированные данные с uart
 int int_w_ptr = 0;
+int writing_ptr = 0; //указатель на текущий конец сообщения
+int current_write_ptr = 0; // в каком месте буфера мы сейчас печатаем
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -127,10 +127,11 @@ int main(void)
   uint8_t str = '2';
   has_irq = 0;
 
+  HAL_TIM_Base_Start_IT((TIM_HandleTypeDef *)&htim1);
   while (1)
   {
 	  int ret = receive_uart(&huart6, &str, has_irq);
-	  if (ret > 0){ //есть что сконвертировать в 0 и 1
+	  if (ret > 0) { //есть что сконвертировать в 0 и 1
 			char* res = char_to_morze(str);
 			if (res[0] == '+') {
 				has_irq = (has_irq + 1) % 2;
@@ -139,89 +140,57 @@ int main(void)
 					NVIC_EnableIRQ(USART6_IRQn); // enable interrupts
 				} else NVIC_DisableIRQ(USART6_IRQn); // disable interrupts
 			}else if(res[0] == '-') {
-	//			char i = '!';
-	//			send_uart(&huart6, &i , 1, has_irq);
+				//char i = '!';
+				//send_uart(&huart6, &i , 1, has_irq);
+			} else {
+				for (int i = 0; i < strlen(res); i++) {
+					int_w_buf[writing_ptr] = res[i] - '0';
+					writing_ptr++;
+				}
 			}
 
 
-		}
-
-	  HAL_Delay(100);
-	  send_buffer_if_not_empty(&huart6);
-  }
-
-  /*char char_w_buf[BUFFER_SIZE] = {0};
-  int char_w_prt = 0;
-
-  char char_r_buf[BUFFER_SIZE] = {0};
-  int char_r_ptr = 0;
-  
-  HAL_TIM_Base_Start_IT((TIM_HandleTypeDef *)&htim1);
-  while (1){
-	  recive_uart(&huart6, (char*)(char_r_buf + char_r_ptr), BUFFER_SIZE - char_r_ptr, has_irq); //читаем не пришло ли сообщение
-
-	  if (char_r_ptr > 0){ //есть что сконвертировать в 0 и 1
-      //TODO: disable irq
-      int res = str_to_morze(char_r_buf, char_r_ptr, int_w_buf, int_w_ptr);
-      char_r_ptr = 0; // прочитали весь буффер
-      
-      if (res == 0){ 
-        has_irq = (has_irq + 1) % 2;
-        if (has_irq == 1){
-          send_buffer_if_not_empty_IT(&huart6);
-          NVIC_EnableIRQ(USART6_IRQn); // enable interrupts
-        }else NVIC_DisableIRQ(USART6_IRQn); // disable interrupts
-      }
-      writing_ptr = int_w_ptr;
-      //TODO: enable irq
-    }else if (0 == is_pressed && 0 == is_wait_unpressed) { //если кнопка не нажата
-		  if (count_tick > LONG_PERIOD_CT && 0 != buf_ptr){ //после длинной паузы печатаем сообщение
-			  send_uart(&huart6, char_w_buf, char_w_prt, has_irq);
-        char_w_prt = 0;
-		  }else if (count_tick > BETWEEN_LETTERS_PERIOD_CT){ // пришла длинная пауза после буквы
-        //конвертируем очередную букву и кладём в буфер на отправку
-        char_w_buf[char_w_prt] = morze_to_str(buffer, buf_ptr);
-        char_w_prt++;
-        buf_ptr = 0;
-        if (char_w_prt == BUFFER_SIZE){
-          send_uart(&huart6, char_w_buf, char_w_prt, has_irq);
-          char_w_prt = 0;
-        }
-      }
+	  }
+	  if (0 == is_pressed && 0 == is_wait_unpressed) { // нопка не нажата
+		  if (buf_ptr != 0 && count_tick > BETWEEN_LETTERS_PERIOD_CT) {
+			  uint8_t to_write = morze_to_str(buffer, buf_ptr);
+			  buf_ptr = 0;
+			  send_uart(&huart6, &to_write, 1, has_irq);
+		  }
 	  } else if (0 == is_pressed && 1 == is_wait_unpressed) { //кнопку отпустили
-		  is_wait_unpressed = 0;
-       if (count_tick > LONG_PERIOD_CT) { // вносим 1 или 0 в буфер на отправку
-			  turn_on_red_led();
-			  HAL_Delay(DEFAULT_DELAY);
-			  turn_off_red_led();
-			  buffer[buf_ptr] = 1;
-		  } else {
-			  turn_on_yellow_led();
-			  HAL_Delay(DEFAULT_DELAY);
-			  turn_off_yellow_led();
-			  buffer[buf_ptr] = 0;
-		  }
-		  count_tick = 0;
-		  buf_ptr++;
-		  if (BUFFER_SIZE == buf_ptr) {
-			  for (int i = 0; i < ERROR_COUNT; i++) { //если буфер переполнится
-				  turn_on_red_led();
-				  turn_on_green_led();
-				  HAL_Delay(ERROR_DELAY);
-				  turn_off_red_led();
-				  turn_off_green_led();
-				  HAL_Delay(ERROR_DELAY);
-			  }
-        buf_ptr = 0;
-		  }
+		 is_wait_unpressed = 0;
+		 if (count_tick > LONG_PERIOD_CT) { // вносим 1 или 0 в буфер на отправку
+			 turn_on_red_led();
+			 HAL_Delay(DEFAULT_DELAY);
+			 turn_off_red_led();
+			 buffer[buf_ptr] = 1;
+		 } else {
+			 turn_on_yellow_led();
+			 HAL_Delay(DEFAULT_DELAY);
+			 turn_off_yellow_led();
+			 buffer[buf_ptr] = 0;
+		 }
+		 count_tick = 0;
+		 buf_ptr++;
+		 if (BUFFER_SIZE == buf_ptr) {
+			 for (int i = 0; i < ERROR_COUNT; i++) { //если буфер переполнится
+				 turn_on_red_led();
+				 turn_on_green_led();
+				 HAL_Delay(ERROR_DELAY);
+				 turn_off_red_led();
+				 turn_off_green_led();
+				 HAL_Delay(ERROR_DELAY);
+			 }
+			 buf_ptr = 0;
+		 }
 	  } else if (1 == is_pressed && 0 == is_wait_unpressed) { //кнопку нажали -- ждём когда отпустят
 		  is_wait_unpressed = 1;
 		  count_tick = 0;
 	  }
 
 	  send_buffer_if_not_empty(&huart6);
-  }*/
-  
+  }
+
   /* USER CODE END 3 */
 }
 
@@ -288,7 +257,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 16000-1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 15-1;
+  htim1.Init.Period = 16-1;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -406,24 +375,24 @@ static void MX_GPIO_Init(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim->Instance==TIM1){
+
+
 		int but = HAL_GPIO_ReadPin(BUT_GPIO_Port, BUT_Pin);
 		but = !but;
 
-		if(is_reading == 1){
-			if(but == 1 && noisy == 0){
-				noisy = 1;
-			} else if(but == 1 && noisy == 1) {
-				is_pressed = 1;
-				count_tick++;
-			} else if(noisy == 1 && but == 0){
-				noisy = 0;
-			} else if(but == 0 && noisy == 0){
-				is_pressed = 0;
-				count_tick++;
-			}
+		if(but == 1 && noisy == 0){
+			noisy = 1;
+		} else if(but == 1 && noisy == 1) {
+			is_pressed = 1;
+			count_tick++;
+		} else if(noisy == 1 && but == 0){
+			noisy = 0;
+		} else if(but == 0 && noisy == 0){
+			is_pressed = 0;
+			count_tick++;
 		}
 
-    if(writing_ptr > 0){ //выводим
+    if(writing_ptr > 0){
 			if(is_green){ //надо выключить
 				if (dash_delay > 0){
 					if (dash_delay < DASH_DELAY){ // ждём пока пауза не пройдёт
@@ -432,6 +401,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 						dash_delay = 0;
 						turn_off_green_led();
 						is_green = 0;
+						current_write_ptr++;
 					}
 				}else if(comma_delay > 0){
 					if (comma_delay < COMMA_DELAY){ // ждём пока пауза не пройдёт
@@ -440,6 +410,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 						comma_delay = 0;
 						turn_off_green_led();
 						is_green = 0;
+						current_write_ptr++;
 					}
 				}
 			}else{ //надо включить
@@ -460,10 +431,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			}
 
 			if(current_write_ptr == writing_ptr){ // TODO: проверить, что прерывания не ломают writing_ptr
-        current_write_ptr = 0;
-        writing_ptr = 0;
-      }
-			current_write_ptr++;
+				current_write_ptr = 0;
+				writing_ptr = 0;
+			}
 		}
 
 	}
