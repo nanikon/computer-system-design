@@ -33,9 +33,10 @@
 /* USER CODE BEGIN PD */
 #define WRITE_BUFFER_SIZE 512
 #define MIDDLE_BUFFER_SIZE 100
-#define BUFF_SIZE 1024
+#define TICK_BUFF_SIZE 20
 #define MAX_DURATION 10
 #define DEFAULT_LIGHT_DURATION 10
+#define MODES_COUNT 4
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -51,11 +52,12 @@ UART_HandleTypeDef huart6;
 /* USER CODE BEGIN PV */
 uint8_t read_buffer = 0;
 uint8_t output = 0; // сейчас читаем или выводим
-Tick green[BUFF_SIZE] = {};
-Tick red_yellow[BUFF_SIZE] = {};
+Tick green[TICK_BUFF_SIZE] = {};
+Tick red_yellow[TICK_BUFF_SIZE] = {};
 uint8_t tick = 0;
 uint32_t writing_ptr;
 uint32_t current_write_ptr;
+Mode modes[MODES_COUNT];
 
 uint8_t buffer_to_write[WRITE_BUFFER_SIZE] = {0}; // буфер на передачу
 uint8_t middle_buffer[MIDDLE_BUFFER_SIZE] = {0};
@@ -63,7 +65,15 @@ size_t start_write = 0; // номер символа с которого нач�
 size_t end_write = 0;
 
 uint8_t mode = 1;
-uint8_t scaler_speed = 1;
+uint32_t min_scaler = 16-1;
+uint32_t max_scaler = 1600-1;
+uint32_t scaler_speed = 160-1;
+uint32_t new_scaler_speed;
+
+Input_tick tick_buffer[TICK_BUFF_SIZE] = {0};
+Input_tick cur_read_tick = {0};
+uint8_t tick_ptr = 0;
+uint8_t tick_len = 0;
 
 /* USER CODE END PV */
 
@@ -112,8 +122,10 @@ int main(void)
   MX_USART6_UART_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_TIM_Base_Start_IT((TIM_HandleTypeDef *)&htim1);
   HAL_UART_Receive_IT(&huart6, (uint8_t*) &read_buffer, 1);
+  init_modes(modes);
+  play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 
   /* USER CODE END 2 */
 
@@ -189,9 +201,9 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 16000-1;
+  htim1.Init.Prescaler = 160-1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 16-1;
+  htim1.Init.Period = 1000-1;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -297,20 +309,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-void handler_input() {
-	if (output == 1) {
-		switch (read_buffer) {
-		case 1:
-			break;
-		default:
-			break;
-		}
-	} else {
-
-	}
-}
-
 void send_buffer_if_not_empty_IT(UART_HandleTypeDef *huart){
 	if (start_write != end_write) {
 		HAL_UART_Transmit_IT(huart, (uint8_t*) (buffer_to_write + start_write), 1);
@@ -345,6 +343,117 @@ void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size) {
 	}
 }
 
+void send_user_mode_param();
+
+void fill_softnes_and_save_input_tick(uint8_t softness) {
+	tick_ptr = 0;
+	cur_read_tick.softness = softness;
+	memcpy(tick_buffer + tick_len, &cur_read_tick, sizeof(Input_tick));
+	tick_len++;
+	//bzero(&cur_read_tick, sizeof(Intput_tick);
+}
+
+void handler_input() {
+	if (output == 1) {
+		switch (read_buffer) {
+		case '1':
+			// to next mode
+			if (mode == 5) {
+				mode = 1;
+				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
+			} else {
+				mode++;
+				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
+			}
+			break;
+		case '2':
+			// to previos mode
+			if (mode == 1) {
+				mode = 5;
+				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
+			} else {
+				mode--;
+				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
+			}
+			break;
+		case '3':
+			// faster
+			new_scaler_speed = scaler_speed - abs((double) scaler_speed / 10);
+			if (new_scaler_speed > min_scaler) {
+				scaler_speed = new_scaler_speed;
+				__HAL_TIM_SET_PRESCALER(&htim1, scaler_speed);
+			}
+			break;
+		case '4':
+			// slower
+			new_scaler_speed = scaler_speed + abs((double) scaler_speed / 10);
+			if (new_scaler_speed < max_scaler) {
+				scaler_speed = new_scaler_speed;
+				__HAL_TIM_SET_PRESCALER(&htim1, scaler_speed);
+			}
+			break;
+		case '5':
+			// send current user mode
+			send_user_mode_param();
+			break;
+		case '\n':
+			// ввод в меню настройки
+			output = 0;
+			break;
+		default:
+			break;
+		}
+	} else {
+		if (read_buffer == '\n') {
+			if (tick_len != 0) {
+				fill_mode_array(tick_buffer, tick_len, green, red_yellow, &writing_ptr);
+				tick_len = 0;
+			}
+			output = 1;
+		} else {
+			switch (tick_ptr) {
+				case 0:
+					if (tick_len == TICK_BUFF_SIZE) {
+						bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+						sprintf((char*) middle_buffer, "user mode buffer is full!");
+						send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
+					} else {
+						if (read_buffer == 'r' || read_buffer == 'g') {
+							tick_ptr++;
+							cur_read_tick.color = RED_COLOR;
+						} else if (read_buffer == 'y') {
+							tick_ptr++;
+							cur_read_tick.color = 0;
+						}
+					}
+					break;
+				case 1:
+					if (read_buffer >= '1' && read_buffer <= '9'){
+						tick_ptr++;
+						cur_read_tick.brightness = read_buffer - '0';
+					}
+					break;
+				case 2:
+					if (read_buffer >= '1' && read_buffer <= '9'){
+						tick_ptr++;
+						cur_read_tick.duration = read_buffer - '0';
+					}
+					break;
+				case 3:
+					if (read_buffer == '+') {
+						fill_softnes_and_save_input_tick(1);
+					} else if (read_buffer == '-') {
+						fill_softnes_and_save_input_tick(0);
+					}
+					break;
+				default:
+					tick_ptr = 0;
+					break;
+			}
+		}
+	}
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart->Instance == USART6)
@@ -352,11 +461,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     // USART6 завершил прием данных
 	  handler_input();
 	  if (output == 1) {
+		  // режим проигрывания - выводим номер мелодии и скорость
 		  bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-		  sprintf((char*) middle_buffer, "mode: %d, speed: %d", mode, scaler_speed);
+		  sprintf((char*) middle_buffer, "mode: %d, speed: %ld", mode, scaler_speed);
 		  send_uart(huart, middle_buffer, strlen((char*)middle_buffer));
 	  } else {
+		  // режим пользовательской конфигурации - выводим ту которая есть сейчас
 		  // send current user configuration
+		  send_user_mode_param();
 	  }
 	  HAL_UART_Receive_IT(huart, (uint8_t*) &read_buffer, 1);
   }
@@ -379,12 +491,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       current_write_ptr++;
 
       if(output > 0){
-        play_green(tick, green, current_write_ptr);
-        play_red_yellow(tick, red_yellow, current_write_ptr);
+        /*play_green(tick, green, current_write_ptr);
+        play_red_yellow(tick, red_yellow, current_write_ptr);*/
+    	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
 
         if(current_write_ptr == writing_ptr){
+          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
           current_write_ptr = 0;
-          writing_ptr = 0;
         }
       }
     }
