@@ -36,7 +36,7 @@
 #define TICK_BUFF_SIZE 20
 #define MAX_DURATION 9
 #define DEFAULT_LIGHT_DURATION 10
-#define MODES_COUNT 4
+#define MODES_COUNT 5
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -424,21 +424,19 @@ void handler_input() {
 			// to next mode
 			if (mode == 5) {
 				mode = 1;
-				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			} else {
 				mode++;
-				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			}
+			play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			break;
 		case '2':
 			// to previos mode
 			if (mode == 1) {
 				mode = 5;
-				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			} else {
 				mode--;
-				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			}
+      play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			break;
 		case '3':
 			// faster
