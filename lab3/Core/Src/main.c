@@ -36,7 +36,7 @@
 #define TICK_BUFF_SIZE 20
 #define MAX_DURATION 10
 #define DEFAULT_LIGHT_DURATION 10
-#define MODES_COUNT 4
+#define MODES_COUNT 5
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -414,26 +414,26 @@ void send_user_mode_param() {
 	} else {
 		for (int i = 0; i < tick_len; i++) {
 				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-				sprintf((char*) middle_buffer, "color: %d, bright: %d, duration %d, softness %d\r",
+				sprintf((char*) middle_buffer, "\rcolor: %c, bright: %d, duration %d, softness %d\r",
 						tick_buffer[i].color, tick_buffer[i].brightness, tick_buffer[i].duration, tick_buffer[i].softness);
 				send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
 		}
 		if (tick_ptr > 0) {
 			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-			sprintf((char*) middle_buffer, "color: %d", cur_read_tick.color);
+			sprintf((char*) middle_buffer, "\rcolor: %c", cur_read_tick.color);
 			send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
 			if (tick_ptr > 1) {
 				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
 				sprintf((char*) middle_buffer, ", bright: %d", cur_read_tick.brightness);
 				send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
-			}
-			if (tick_ptr > 2) {
-				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-				printf((char*) middle_buffer, ", duration: %d", cur_read_tick.duration);
-				send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
+				if (tick_ptr > 2) {
+					bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+					printf((char*) middle_buffer, ", duration: %d", cur_read_tick.duration);
+					send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
+				}
 			}
 			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-			sprintf((char*) middle_buffer, "\n\r");
+			sprintf((char*) middle_buffer, "\r");
 			send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
 		}
 	}
@@ -453,21 +453,23 @@ void handler_input() {
 			// to next mode
 			if (mode == 5) {
 				mode = 1;
-				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
+				//play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			} else {
 				mode++;
-				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
+				//play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			}
+			play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			break;
 		case '2':
 			// to previos mode
 			if (mode == 1) {
 				mode = 5;
-				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
+				//play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			} else {
 				mode--;
-				play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
+				//play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			}
+			play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			break;
 		case '3':
 			// faster
@@ -493,6 +495,7 @@ void handler_input() {
 		case '\r':
 			// ввод в меню настройки
 			output = 0;
+			tick_len = 0;
 			break;
 		default:
 			break;
@@ -500,8 +503,8 @@ void handler_input() {
 	} else {
 		if (read_buffer == '\r') {
 			if (tick_len != 0) {
-				fill_mode_array(tick_buffer, tick_len, green, red_yellow, &writing_ptr);
-				tick_len = 0;
+				fill_mode_array(tick_buffer, tick_len, &modes[MODES_COUNT - 1]);
+				tick_ptr = 0;
 			}
 			output = 1;
 		} else {
@@ -589,9 +592,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		     middle_buffer[1] = ' ';
 		     middle_buffer[2] = red_yellow[current_write_ptr].color + '0';
 		     middle_buffer[3] = ' ';
-		     middle_buffer[4] = current_write_ptr + '0';
-		     middle_buffer[5] = ';';
-		     send_uart(&huart6, middle_buffer, 6 * sizeof(uint8_t));*/
+		     middle_buffer[4] = green[current_write_ptr].color + '0';
+		     middle_buffer[5] = ' ';
+		     middle_buffer[6] = current_write_ptr + '0';
+		     middle_buffer[7] = ';';
+		     send_uart(&huart6, middle_buffer, 8 * sizeof(uint8_t));*/
 		  }
 		  htim4.Instance->CCR2 = 100 * green[current_write_ptr].duration;
 		  htim4.Instance->CCR3 = 0;
