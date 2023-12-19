@@ -103,17 +103,23 @@ void play_green(uint8_t tick, Tick* green, uint32_t current_write_ptr){
 void play_red_yellow(uint8_t tick, Tick* red_yellow, uint32_t current_write_ptr){
   Tick cur = red_yellow[current_write_ptr];
   if (cur.color == RED_COLOR){
-    if (tick < cur.duration)  turn_on_red_led();
+    if (tick < cur.duration) {
+    	turn_off_yellow_led();
+    	turn_on_red_led();
+    }
     else  turn_off_red_led();
   }else{
-    if (tick < cur.duration)  turn_on_yellow_led();
+    if (tick < cur.duration)  {
+    	turn_off_red_led();
+    	turn_on_yellow_led();
+    }
     else  turn_off_yellow_led();
   }
 }
 
 void play_new_mode(Mode* mode, Tick* green, Tick* red_yellow, uint32_t* writing_ptr, uint32_t* current_write_ptr){
-    memcpy(green, mode->green, MODE_SIZE);
-    memcpy(red_yellow, mode->red_yellow, MODE_SIZE);
+    memcpy(green, mode->green, sizeof(Tick) * MODE_SIZE);
+    memcpy(red_yellow, mode->red_yellow, sizeof(Tick) * MODE_SIZE);
     *writing_ptr = MODE_SIZE;
     *current_write_ptr = 0;
 }

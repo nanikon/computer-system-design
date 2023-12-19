@@ -34,7 +34,7 @@
 #define WRITE_BUFFER_SIZE 512
 #define MIDDLE_BUFFER_SIZE 100
 #define TICK_BUFF_SIZE 20
-#define MAX_DURATION 10
+#define MAX_DURATION 9
 #define DEFAULT_LIGHT_DURATION 10
 #define MODES_COUNT 4
 /* USER CODE END PD */
@@ -46,31 +46,32 @@
 
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
 uint8_t read_buffer = 0;
-uint8_t output = 0; // сейчас читаем или выводим
+uint8_t output = 1; // сейчас читаем или выводим
 Tick green[TICK_BUFF_SIZE] = {};
 Tick red_yellow[TICK_BUFF_SIZE] = {};
 uint8_t tick = 0;
 uint32_t writing_ptr;
 uint32_t current_write_ptr;
-Mode modes[MODES_COUNT];
+Mode modes[MODES_COUNT] = {0};
 
-uint8_t buffer_to_write[WRITE_BUFFER_SIZE] = {0}; // буфер на передачу
-uint8_t middle_buffer[MIDDLE_BUFFER_SIZE] = {0};
+uint8_t buffer_to_write[WRITE_BUFFER_SIZE] = {}; // буфер на передачу
+uint8_t middle_buffer[MIDDLE_BUFFER_SIZE] = {};
 size_t start_write = 0; // номер символа с которого начинать передачу
 size_t end_write = 0;
 
 uint8_t mode = 1;
-uint32_t min_scaler = 16-1;
-uint32_t max_scaler = 1600-1;
-uint32_t scaler_speed = 160-1;
+uint32_t min_scaler = 160-1;
+uint32_t max_scaler = 16000-1;
+uint32_t scaler_speed = 1600-1;
 uint32_t new_scaler_speed;
 
-Input_tick tick_buffer[TICK_BUFF_SIZE] = {0};
+Input_tick tick_buffer[TICK_BUFF_SIZE] = {};
 Input_tick cur_read_tick = {0};
 uint8_t tick_ptr = 0;
 uint8_t tick_len = 0;
@@ -82,6 +83,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART6_UART_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -121,11 +123,14 @@ int main(void)
   MX_GPIO_Init();
   MX_USART6_UART_Init();
   MX_TIM1_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+  //NVIC_EnableIRQ(USART6_IRQn);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
   HAL_TIM_Base_Start_IT((TIM_HandleTypeDef *)&htim1);
   HAL_UART_Receive_IT(&huart6, (uint8_t*) &read_buffer, 1);
   init_modes(modes);
-  play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
+  play_new_mode(&modes[0], green, red_yellow, &writing_ptr, &current_write_ptr);
 
   /* USER CODE END 2 */
 
@@ -201,9 +206,9 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 160-1;
+  htim1.Init.Prescaler = 1600-1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 1000-1;
+  htim1.Init.Period = 100-1;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -242,6 +247,65 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
+
+}
+
+/**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 16-1;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 999;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 500;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+  HAL_TIM_MspPostInit(&htim4);
 
 }
 
@@ -295,10 +359,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, LEDG_Pin|LEDY_Pin|LEDR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LEDY_Pin|LEDR_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : LEDG_Pin LEDY_Pin LEDR_Pin */
-  GPIO_InitStruct.Pin = LEDG_Pin|LEDY_Pin|LEDR_Pin;
+  /*Configure GPIO pins : LEDY_Pin LEDR_Pin */
+  GPIO_InitStruct.Pin = LEDY_Pin|LEDR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -394,7 +458,7 @@ void handler_input() {
 			break;
 		case '5':
 			// send current user mode
-			send_user_mode_param();
+			//send_user_mode_param();
 			break;
 		case '\n':
 			// ввод в меню настройки
@@ -459,6 +523,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   if (huart->Instance == USART6)
   {
     // USART6 завершил прием данных
+	  send_uart(huart, (uint8_t*) &read_buffer, sizeof(uint8_t));
 	  handler_input();
 	  if (output == 1) {
 		  // режим проигрывания - выводим номер мелодии и скорость
@@ -468,7 +533,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	  } else {
 		  // режим пользовательской конфигурации - выводим ту которая есть сейчас
 		  // send current user configuration
-		  send_user_mode_param();
+		  //send_user_mode_param();
 	  }
 	  HAL_UART_Receive_IT(huart, (uint8_t*) &read_buffer, 1);
   }
@@ -485,22 +550,34 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if(htim->Instance==TIM1){
-    tick++;
-    if (tick > MAX_DURATION){
+	  if (output > 0) {
+		  tick++;
+		  if (tick >= MAX_DURATION) { // scaler как-то сюда добавлять
+		     tick = 0;
+		     current_write_ptr++;
+		     if (current_write_ptr == writing_ptr) {
+		       current_write_ptr = 0;
+		     }
+		  }
+		  htim4.Instance->CCR2 = 100 * green[current_write_ptr].duration;
+		  //HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
+	  }
+
+	  /*tick++;
+    if (tick >= MAX_DURATION) { // scaler как-то сюда добавлять
       tick = 0;
       current_write_ptr++;
 
-      if(output > 0){
-        /*play_green(tick, green, current_write_ptr);
-        play_red_yellow(tick, red_yellow, current_write_ptr);*/
-    	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
-
-        if(current_write_ptr == writing_ptr){
-          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
-          current_write_ptr = 0;
-        }
-      }
     }
+    if (current_write_ptr == writing_ptr) {
+       current_write_ptr = 0;
+    }
+    if (output > 0){
+       play_green(tick, green, current_write_ptr);
+       play_red_yellow(tick, red_yellow, current_write_ptr);
+        	 // HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
+
+    }*/
   }
 
 }
