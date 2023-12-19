@@ -140,11 +140,11 @@ void init_mode1(Mode* mode1){
 void init_mode2(Mode* mode2){
     mode2->green[0] = (Tick){.color = GREEN_COLOR, .duration=9};
     mode2->red_yellow[0] = (Tick){.color = RED_COLOR, .duration=0};
-    mode2->green[1] = (Tick){.color = GREEN_COLOR, .duration=9};
+    mode2->green[1] = (Tick){.color = GREEN_COLOR, .duration=5};
     mode2->red_yellow[1] = (Tick){.color = RED_COLOR, .duration=0};
     mode2->green[2] = (Tick){.color = GREEN_COLOR, .duration=9};
     mode2->red_yellow[2] = (Tick){.color = RED_COLOR, .duration=0};
-    mode2->green[3] = (Tick){.color = GREEN_COLOR, .duration=9};
+    mode2->green[3] = (Tick){.color = GREEN_COLOR, .duration=5};
     mode2->red_yellow[3] = (Tick){.color = RED_COLOR, .duration=0};
     mode2->green[4] = (Tick){.color = GREEN_COLOR, .duration=9};
     mode2->red_yellow[4] = (Tick){.color = RED_COLOR, .duration=0};

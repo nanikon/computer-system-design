@@ -34,7 +34,7 @@
 #define WRITE_BUFFER_SIZE 512
 #define MIDDLE_BUFFER_SIZE 100
 #define TICK_BUFF_SIZE 20
-#define MAX_DURATION 9
+#define MAX_DURATION 10
 #define DEFAULT_LIGHT_DURATION 10
 #define MODES_COUNT 4
 /* USER CODE END PD */
@@ -66,9 +66,9 @@ size_t start_write = 0; // номер символа с которого нач�
 size_t end_write = 0;
 
 uint8_t mode = 1;
-uint32_t min_scaler = 160-1;
-uint32_t max_scaler = 16000-1;
-uint32_t scaler_speed = 1600-1;
+uint32_t min_scaler = 1;
+uint32_t max_scaler = 100;
+uint32_t scaler_speed = 10;
 uint32_t new_scaler_speed;
 
 Input_tick tick_buffer[TICK_BUFF_SIZE] = {};
@@ -125,8 +125,9 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  //NVIC_EnableIRQ(USART6_IRQn);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
   HAL_TIM_Base_Start_IT((TIM_HandleTypeDef *)&htim1);
   HAL_UART_Receive_IT(&huart6, (uint8_t*) &read_buffer, 1);
   init_modes(modes);
@@ -302,6 +303,15 @@ static void MX_TIM4_Init(void)
   {
     Error_Handler();
   }
+  sConfigOC.Pulse = 0;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN TIM4_Init 2 */
 
   /* USER CODE END TIM4_Init 2 */
@@ -349,7 +359,6 @@ static void MX_USART6_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
@@ -357,16 +366,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, LEDY_Pin|LEDR_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pins : LEDY_Pin LEDR_Pin */
-  GPIO_InitStruct.Pin = LEDY_Pin|LEDR_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -414,7 +413,6 @@ void fill_softnes_and_save_input_tick(uint8_t softness) {
 	cur_read_tick.softness = softness;
 	memcpy(tick_buffer + tick_len, &cur_read_tick, sizeof(Input_tick));
 	tick_len++;
-	//bzero(&cur_read_tick, sizeof(Intput_tick);
 }
 
 void handler_input() {
@@ -442,18 +440,19 @@ void handler_input() {
 			break;
 		case '3':
 			// faster
-			new_scaler_speed = scaler_speed - abs((double) scaler_speed / 10);
+			new_scaler_speed = scaler_speed - round((double) scaler_speed / 10);
+			if (new_scaler_speed == scaler_speed) {
+				new_scaler_speed++;
+			}
 			if (new_scaler_speed > min_scaler) {
 				scaler_speed = new_scaler_speed;
-				__HAL_TIM_SET_PRESCALER(&htim1, scaler_speed);
 			}
 			break;
 		case '4':
 			// slower
-			new_scaler_speed = scaler_speed + abs((double) scaler_speed / 10);
+			new_scaler_speed = scaler_speed + round((double) scaler_speed / 10);
 			if (new_scaler_speed < max_scaler) {
 				scaler_speed = new_scaler_speed;
-				__HAL_TIM_SET_PRESCALER(&htim1, scaler_speed);
 			}
 			break;
 		case '5':
@@ -552,32 +551,35 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if(htim->Instance==TIM1){
 	  if (output > 0) {
 		  tick++;
-		  if (tick >= MAX_DURATION) { // scaler как-то сюда добавлять
+		  if (tick >= (MAX_DURATION * scaler_speed)) { // scaler как-то сюда добавлять
 		     tick = 0;
 		     current_write_ptr++;
 		     if (current_write_ptr == writing_ptr) {
 		       current_write_ptr = 0;
 		     }
+		     /*middle_buffer[0] = red_yellow[current_write_ptr].duration + '0';
+		     middle_buffer[1] = ' ';
+		     middle_buffer[2] = red_yellow[current_write_ptr].color + '0';
+		     middle_buffer[3] = ' ';
+		     middle_buffer[4] = current_write_ptr + '0';
+		     middle_buffer[5] = ';';
+		     send_uart(&huart6, middle_buffer, 6 * sizeof(uint8_t));*/
 		  }
 		  htim4.Instance->CCR2 = 100 * green[current_write_ptr].duration;
-		  //HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
+		  htim4.Instance->CCR3 = 0;
+		  htim4.Instance->CCR4 = 0;
+		  if (red_yellow[current_write_ptr].color == RED_COLOR) {
+			  htim4.Instance->CCR4 = 100 * red_yellow[current_write_ptr].duration;
+			  //HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
+			  //middle_buffer[0] = 'r';
+			  //send_uart(&huart6, middle_buffer, sizeof(uint8_t));
+		  } else {
+			  htim4.Instance->CCR3 = 100 * red_yellow[current_write_ptr].duration;
+			  //middle_buffer[0] = 'y';
+			  //send_uart(&huart6, middle_buffer, sizeof(uint8_t));
+		  }
+
 	  }
-
-	  /*tick++;
-    if (tick >= MAX_DURATION) { // scaler как-то сюда добавлять
-      tick = 0;
-      current_write_ptr++;
-
-    }
-    if (current_write_ptr == writing_ptr) {
-       current_write_ptr = 0;
-    }
-    if (output > 0){
-       play_green(tick, green, current_write_ptr);
-       play_red_yellow(tick, red_yellow, current_write_ptr);
-        	 // HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
-
-    }*/
   }
 
 }
