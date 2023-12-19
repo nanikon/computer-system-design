@@ -468,7 +468,7 @@ void handler_input() {
 	} else {
 		if (read_buffer == '\n') {
 			if (tick_len != 0) {
-				fill_mode_array(tick_buffer, tick_len, green, red_yellow, &writing_ptr);
+				fill_mode_array(tick_buffer, tick_len, modes[MODES_COUNT]);
 				tick_len = 0;
 			}
 			output = 1;
