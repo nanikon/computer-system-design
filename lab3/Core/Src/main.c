@@ -406,7 +406,38 @@ void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size) {
 	}
 }
 
-void send_user_mode_param();
+void send_user_mode_param() {
+	if (tick_len == 0 && tick_ptr == 0) {
+		bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+		sprintf((char*) middle_buffer, "Not found user configuration!\r");
+		send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
+	} else {
+		for (int i = 0; i < tick_len; i++) {
+				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+				sprintf((char*) middle_buffer, "color: %d, bright: %d, duration %d, softness %d\r",
+						tick_buffer[i].color, tick_buffer[i].brightness, tick_buffer[i].duration, tick_buffer[i].softness);
+				send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
+		}
+		if (tick_ptr > 0) {
+			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+			sprintf((char*) middle_buffer, "color: %d", cur_read_tick.color);
+			send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
+			if (tick_ptr > 1) {
+				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+				sprintf((char*) middle_buffer, ", bright: %d", cur_read_tick.brightness);
+				send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
+			}
+			if (tick_ptr > 2) {
+				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+				printf((char*) middle_buffer, ", duration: %d", cur_read_tick.duration);
+				send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
+			}
+			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+			sprintf((char*) middle_buffer, "\n\r");
+			send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
+		}
+	}
+}
 
 void fill_softnes_and_save_input_tick(uint8_t softness) {
 	tick_ptr = 0;
@@ -457,9 +488,9 @@ void handler_input() {
 			break;
 		case '5':
 			// send current user mode
-			//send_user_mode_param();
+			send_user_mode_param();
 			break;
-		case '\n':
+		case '\r':
 			// ввод в меню настройки
 			output = 0;
 			break;
@@ -467,7 +498,7 @@ void handler_input() {
 			break;
 		}
 	} else {
-		if (read_buffer == '\n') {
+		if (read_buffer == '\r') {
 			if (tick_len != 0) {
 				fill_mode_array(tick_buffer, tick_len, green, red_yellow, &writing_ptr);
 				tick_len = 0;
@@ -481,12 +512,9 @@ void handler_input() {
 						sprintf((char*) middle_buffer, "user mode buffer is full!");
 						send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
 					} else {
-						if (read_buffer == 'r' || read_buffer == 'g') {
+						if (read_buffer == 'r' || read_buffer == 'g' || read_buffer == 'y') {
 							tick_ptr++;
-							cur_read_tick.color = RED_COLOR;
-						} else if (read_buffer == 'y') {
-							tick_ptr++;
-							cur_read_tick.color = 0;
+							cur_read_tick.color = read_buffer;
 						}
 					}
 					break;
@@ -532,7 +560,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	  } else {
 		  // режим пользовательской конфигурации - выводим ту которая есть сейчас
 		  // send current user configuration
-		  //send_user_mode_param();
+		  send_user_mode_param();
 	  }
 	  HAL_UART_Receive_IT(huart, (uint8_t*) &read_buffer, 1);
   }
