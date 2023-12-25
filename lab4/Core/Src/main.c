@@ -53,8 +53,7 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
-uint8_t middle_buffer[MIDDLE_BUFFER_SIZE] = {0};
-uint8_t read_buffer = 0; //какая кнопка нажата или 0 если клавиатура не нажата
+char middle_buffer[MIDDLE_BUFFER_SIZE] = {0};
 uint8_t output = 1;      // сейчас читаем или выводим
 Tick green[TICK_BUFF_SIZE] = {};
 Tick red_yellow[TICK_BUFF_SIZE] = {};
@@ -140,7 +139,6 @@ int main(void)
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
   HAL_TIM_Base_Start_IT((TIM_HandleTypeDef *)&htim1);
-  HAL_UART_Receive_IT(&huart6, (uint8_t *)&read_buffer, 1);
   init_modes(modes);
   play_new_mode(&modes[0], green, red_yellow, &writing_ptr, &current_write_ptr);
 
@@ -444,7 +442,7 @@ void send_user_mode_param() {
   } else {
     for (int i = 0; i < tick_len; i++) {
       bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-      sprintf((char *)middle_buffer,
+      sprintf(middle_buffer,
               "\rcolor: %c, bright: %d, duration %d, softness %d\r",
               tick_buffer[i].color, tick_buffer[i].brightness,
               tick_buffer[i].duration, tick_buffer[i].softness);
@@ -452,23 +450,21 @@ void send_user_mode_param() {
     }
     if (tick_ptr > 0) {
       bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-      sprintf((char *)middle_buffer, "\rcolor: %c", cur_read_tick.color);
-      send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+      sprintf(middle_buffer, "\rcolor: %c", cur_read_tick.color);
+      send_uart(&huart6, middle_buffer);
       if (tick_ptr > 1) {
         bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-        sprintf((char *)middle_buffer, ", bright: %d",
+        sprintf(middle_buffer, ", bright: %d",
                 cur_read_tick.brightness);
-        send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+        send_uart(&huart6, middle_buffer);
         if (tick_ptr > 2) {
           bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-          printf((char *)middle_buffer, ", duration: %d",
+          printf(middle_buffer, ", duration: %d",
                  cur_read_tick.duration);
-          send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+          send_uart(&huart6, middle_buffer);
         }
       }
-      bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-      sprintf((char *)middle_buffer, "\r");
-      send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+      send_uart(&huart6, "\r");
     }
   }
 }
@@ -527,7 +523,7 @@ void handler_input(uint8_t pressed_key) {
       // send current user mode
       send_user_mode_param();
       break;
-    case 9:
+    case 12:
       // ввод в меню настройки
       output = 0;
       tick_len = 0;
@@ -536,7 +532,7 @@ void handler_input(uint8_t pressed_key) {
       break;
     }
   } else {
-    if (pressed_key == 9) {
+    if (pressed_key == 12) {
       if (tick_len != 0) {
         fill_mode_array(tick_buffer, tick_len, &modes[MODES_COUNT - 1]);
         tick_ptr = 0;
@@ -549,29 +545,34 @@ void handler_input(uint8_t pressed_key) {
           bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
           send_uart(&huart6, "user mode buffer is full!");
         } else {
-        	// todo переписать на клавиатуру
-          if (read_buffer == 'r' || read_buffer == 'g' || read_buffer == 'y') {
-            tick_ptr++;
-            cur_read_tick.color = read_buffer;
-          }
+        	if (pressed_key < 4) {
+        		tick_ptr++;
+        		if (pressed_key == 1) {
+        			cur_read_tick.color = 'g';
+        		} else if (pressed_key == 2) {
+        			cur_read_tick.color = 'y';
+        		} else if (pressed_key == 2) {
+        		    cur_read_tick.color = 'r';
+        		}
+        	}
         }
         break;
       case 1:
-        if (read_buffer >= '1' && read_buffer <= '9') {
+        if (pressed_key >= 1 && pressed_key <= 9) {
           tick_ptr++;
-          cur_read_tick.brightness = read_buffer - '0';
+          cur_read_tick.brightness = pressed_key;
         }
         break;
       case 2:
-        if (read_buffer >= '1' && read_buffer <= '9') {
+        if (pressed_key >= 1 && pressed_key <= 9) {
           tick_ptr++;
-          cur_read_tick.duration = read_buffer - '0';
+          cur_read_tick.duration = pressed_key;
         }
         break;
       case 3:
-        if (read_buffer == '+') {
+        if (pressed_key == 10) {
           fill_softnes_and_save_input_tick(1);
-        } else if (read_buffer == '-') {
+        } else if (pressed_key == 11) {
           fill_softnes_and_save_input_tick(0);
         }
         break;
@@ -685,7 +686,7 @@ void handler_pressed_key(uint8_t pressed_key) {
 	   if (output == 1) {
 	     // режим проигрывания - выводим номер мелодии и скорость
 	     bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-	     sprintf((char *)middle_buffer, "mode: %d, speed: %ld", mode,
+	     sprintf(middle_buffer, "mode: %d, speed: %ld", mode,
 	        		        	                  scaler_speed);
 	     send_uart(&huart6, middle_buffer);
 	    } else {
@@ -696,53 +697,53 @@ void handler_pressed_key(uint8_t pressed_key) {
 	} else {
 		// режим тестирования
 		bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-		sprintf((char *)middle_buffer, "%d", pressed_key);
-		send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+		sprintf(middle_buffer, "%d", pressed_key);
+		send_uart(&huart6, middle_buffer);
 	}
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   if (htim->Instance == TIM1) {
+	  tick++;
+	        if (tick % 5 == 0) { // логика работы с дребезгом и кнопками
+	          int but = HAL_GPIO_ReadPin(BUT_GPIO_Port, BUT_Pin);
+	          but = !but;
+
+	          if (but == 1 && noisy_but == 0) {
+	          	noisy_but = 1;
+	          } else if (but == 1 && noisy_but == 1) {
+	            if (is_pressed_but == 0) {
+	          	  is_pressed_but = 1;
+	          	  kb_testing = !kb_testing;
+	            }
+	            //count_tick++;
+	          } else if (noisy_but == 1 && but == 0) {
+	            noisy_but = 0;
+	          } else if (but == 0 && noisy_but == 0) {
+	            is_pressed_but = 0;
+	            //count_tick++;
+	          }
+
+	          uint8_t p_key = get_pressed_key();
+	          if (p_key != 0 && noisy_key == 0) {
+	          	noisy_key = p_key;
+	          } else if (p_key != 0 && noisy_key == p_key) {
+	          	if (is_pressed_key == 0) {
+	          		is_pressed_key = 1;
+	          		handler_pressed_key(p_key);
+	          	}
+	          } else if (noisy_key != 0 && p_key == 0) {
+	          	// todo додумать про то если дребезг не на 0 или 1, а на разные кнопки
+	          	noisy_key = 0;
+	          } else if (noisy_key == 0 && p_key == 0) {
+	          	is_pressed_key = 0;
+	          }
+
+	        }
     if (output > 0) {
-      tick++;
-      if (tick % 5 == 0) { // логика работы с дребезгом и кнопками
-        int but = HAL_GPIO_ReadPin(BUT_GPIO_Port, BUT_Pin);
-        but = !but;
-
-        if (but == 1 && noisy_but == 0) {
-        	noisy_but = 1;
-        } else if (but == 1 && noisy_but == 1) {
-          if (is_pressed_but == 0) {
-        	  is_pressed_but = 1;
-        	  kb_testing = !kb_testing;
-          }
-          //count_tick++;
-        } else if (noisy_but == 1 && but == 0) {
-          noisy_but = 0;
-        } else if (but == 0 && noisy_but == 0) {
-          is_pressed_but = 0;
-          //count_tick++;
-        }
-
-        uint8_t p_key = get_pressed_key();
-        if (p_key != 0 && noisy_key == 0) {
-        	noisy_key = p_key;
-        } else if (p_key != 0 && noisy_key == p_key) {
-        	if (is_pressed_key == 0) {
-        		is_pressed_key = 1;
-        		handler_pressed_key(p_key);
-        	}
-        } else if (noisy_key != 0 && p_key == 0) {
-        	// додумать про то если дребезг не на 0 или 1, а на разные кнопки
-        	noisy_key = 0;
-        } else if (noisy_key == 0 && p_key == 0) {
-        	is_pressed_key = 0;
-        }
-
-      }
 
       if (tick >=
-          (MAX_DURATION * scaler_speed)) { // scaler как-то сюда добавлять
+          (MAX_DURATION * scaler_speed)) {
         tick = 0;
         current_write_ptr++;
         if (current_write_ptr == writing_ptr) {

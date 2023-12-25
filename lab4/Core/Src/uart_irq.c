@@ -23,19 +23,19 @@ void send_buffer_if_not_empty_IT(UART_HandleTypeDef *huart){
 	}
 }
 
-void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer) {
+void send_uart(UART_HandleTypeDef *huart, char* buffer) {
 	// добавить данные в буффер
 	char state = HAL_UART_GetState(huart);
-	size_t buf_size = strlen((const char*)buffer);
+	size_t buf_size = strlen(buffer);
 	if (buf_size > WRITE_BUFFER_SIZE - end_write) {
 		size_t first_size = WRITE_BUFFER_SIZE - end_write;
 		if (first_size > 0) {
-			memcpy(buffer_to_write + end_write, buffer, first_size);
+			memcpy(buffer_to_write + end_write, (uint8_t*) buffer, first_size);
 		}
-		memcpy(buffer_to_write, buffer, buf_size - first_size);
+		memcpy(buffer_to_write, (uint8_t*) buffer, buf_size - first_size);
 		end_write = buf_size - first_size;
 	} else {
-		memcpy(buffer_to_write + end_write, buffer, buf_size);
+		memcpy(buffer_to_write + end_write, (uint8_t*)buffer, buf_size);
 		end_write += buf_size;
 	}
 

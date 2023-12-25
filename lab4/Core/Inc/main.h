@@ -36,6 +36,7 @@ extern "C" {
 #include <stdlib.h>
 #include "garland.h"
 #include "kb.h"
+#include "uart_irq.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

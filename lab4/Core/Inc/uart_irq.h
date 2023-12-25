@@ -13,6 +13,6 @@
 
 #define WRITE_BUFFER_SIZE 512
 
-void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer);
+void send_uart(UART_HandleTypeDef *huart, char* buffer);
 
 #endif /* INC_UART_IRQ_H_ */
