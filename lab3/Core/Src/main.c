@@ -209,7 +209,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 1600-1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 100-1;
+  htim1.Init.Period = 10-1;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -407,27 +407,8 @@ void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size) {
 }
 
 void play_new_mode(Mode *mode, Tick *green, Tick *red_yellow, uint32_t *writing_ptr, uint32_t *current_write_ptr) {
-	middle_buffer[0] = '\r';
-	send_uart(&huart6, middle_buffer, sizeof(uint8_t) * 1);
-	for (int i = 0; i < mode->len; i++) {
-	  middle_buffer[0] = mode->red_yellow[i].duration + '0';
-	  middle_buffer[1] = ' ';
-	  middle_buffer[2] = mode->red_yellow[i].color + '0';
-	  middle_buffer[3] = ' ';
-	  middle_buffer[4] = mode->green[i].duration + '0';
-	  middle_buffer[5] = '\r';
-	  send_uart(&huart6, middle_buffer, sizeof(uint8_t) * 6);
-  }
-  middle_buffer[0] = '\r';
-  send_uart(&huart6, middle_buffer, sizeof(uint8_t) * 1);
   memcpy(green, mode->green, sizeof(Tick) * mode->len);
-  bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-  middle_buffer[0]= '?';
-  send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
   memcpy(red_yellow, mode->red_yellow, sizeof(Tick) * mode->len);
-  bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-  middle_buffer[0]= ')';
-  send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
   *writing_ptr = mode->len;
   *current_write_ptr = 0;
 }
@@ -531,9 +512,6 @@ void handler_input() {
 	} else {
 		if (read_buffer == '\r') {
 			if (tick_len != 0) {
-				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-				middle_buffer[0] = '*';
-				send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
 				fill_mode_array(tick_buffer, tick_len, &modes[MODES_COUNT - 1]);
 				tick_ptr = 0;
 			}
@@ -619,28 +597,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		     if (current_write_ptr == writing_ptr) {
 		       current_write_ptr = 0;
 		     }
-		     middle_buffer[0] = red_yellow[current_write_ptr].duration + '0';
-		     middle_buffer[1] = ' ';
-		     middle_buffer[2] = red_yellow[current_write_ptr].color + '0';
-		     middle_buffer[3] = ' ';
-		     middle_buffer[4] = green[current_write_ptr].duration + '0';
-		     middle_buffer[5] = ' ';
-		     middle_buffer[6] = current_write_ptr + '0';
-		     middle_buffer[7] = ';';
-		     send_uart(&huart6, middle_buffer, 8 * sizeof(uint8_t));
 		  }
 		  htim4.Instance->CCR2 = 100 * green[current_write_ptr].duration;
 		  htim4.Instance->CCR3 = 0;
 		  htim4.Instance->CCR4 = 0;
 		  if (red_yellow[current_write_ptr].color == RED_COLOR) {
 			  htim4.Instance->CCR4 = 100 * red_yellow[current_write_ptr].duration;
-			  //HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
-			  //middle_buffer[0] = 'r';
-			  //send_uart(&huart6, middle_buffer, sizeof(uint8_t));
 		  } else {
 			  htim4.Instance->CCR3 = 100 * red_yellow[current_write_ptr].duration;
-			  //middle_buffer[0] = 'y';
-			  //send_uart(&huart6, middle_buffer, sizeof(uint8_t));
 		  }
 
 	  }

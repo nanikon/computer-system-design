@@ -126,67 +126,99 @@ void play_red_yellow(uint8_t tick, Tick *red_yellow,
 }
 
 void init_mode1(Mode *mode) {
-  mode->green = calloc(sizeof(Tick), MODE_SIZE);
-  mode->red_yellow = calloc(sizeof(Tick), MODE_SIZE);
-  mode->len = MODE_SIZE;
-  mode->green[0] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[0] = (Tick){.color = RED_COLOR, .duration = 9};
-  mode->green[1] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[1] = (Tick){.color = YELLOW_COLOR, .duration = 9};
-  mode->green[2] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[2] = (Tick){.color = RED_COLOR, .duration = 9};
-  mode->green[3] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[3] = (Tick){.color = YELLOW_COLOR, .duration = 9};
-  mode->green[4] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[4] = (Tick){.color = RED_COLOR, .duration = 9};
+  mode->len = MODE_SIZE * DEFAULT_LIGHT_DURATION;
+  mode->green = calloc(sizeof(Tick), mode->len);
+  mode->red_yellow = calloc(sizeof(Tick), mode->len);
+  int t;
+  for (int i = 0; i < DEFAULT_LIGHT_DURATION; i++) {
+    t = i;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 9};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 9};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 9};
+    mode->red_yellow[t] = (Tick){.color = YELLOW_COLOR, .duration = 9};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 9};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 9};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 9};
+    mode->red_yellow[t] = (Tick){.color = YELLOW_COLOR, .duration = 9};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 9};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 9};
+  }
 }
 
 void init_mode2(Mode *mode) {
-  mode->green = calloc(sizeof(Tick), MODE_SIZE);
-  mode->red_yellow = calloc(sizeof(Tick), MODE_SIZE);
-  mode->len = MODE_SIZE;
-  mode->green[0] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[0] = (Tick){.color = RED_COLOR, .duration = 0};
-  mode->green[1] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[1] = (Tick){.color = RED_COLOR, .duration = 0};
-  mode->green[2] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[2] = (Tick){.color = RED_COLOR, .duration = 0};
-  mode->green[3] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[3] = (Tick){.color = RED_COLOR, .duration = 0};
-  mode->green[4] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[4] = (Tick){.color = RED_COLOR, .duration = 0};
+	mode->len = MODE_SIZE * DEFAULT_LIGHT_DURATION;
+	  mode->green = calloc(sizeof(Tick), mode->len);
+	  mode->red_yellow = calloc(sizeof(Tick), mode->len);
+  int t;
+  for (int i = 0; i < DEFAULT_LIGHT_DURATION; i++) {
+    t = i;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 9};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 0};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 6};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 0};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 3};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 0};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 5};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 0};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 7};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 0};
+  }
 }
 
 void init_mode3(Mode *mode) {
-  mode->green = calloc(sizeof(Tick), MODE_SIZE);
-  mode->red_yellow = calloc(sizeof(Tick), MODE_SIZE);
-  mode->len = MODE_SIZE;
-  mode->green[0] = (Tick){.color = GREEN_COLOR, .duration = 0};
-  mode->red_yellow[0] = (Tick){.color = RED_COLOR, .duration = 9};
-  mode->green[1] = (Tick){.color = GREEN_COLOR, .duration = 0};
-  mode->red_yellow[1] = (Tick){.color = YELLOW_COLOR, .duration = 0};
-  mode->green[2] = (Tick){.color = GREEN_COLOR, .duration = 0};
-  mode->red_yellow[2] = (Tick){.color = YELLOW_COLOR, .duration = 9};
-  mode->green[3] = (Tick){.color = GREEN_COLOR, .duration = 0};
-  mode->red_yellow[3] = (Tick){.color = RED_COLOR, .duration = 0};
-  mode->green[4] = (Tick){.color = GREEN_COLOR, .duration = 0};
-  mode->red_yellow[4] = (Tick){.color = RED_COLOR, .duration = 9};
+	mode->len = MODE_SIZE * DEFAULT_LIGHT_DURATION;
+	  mode->green = calloc(sizeof(Tick), mode->len);
+	  mode->red_yellow = calloc(sizeof(Tick), mode->len);
+  int t;
+  for (int i = 0; i < DEFAULT_LIGHT_DURATION; i++) {
+    t = i;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 0};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 9};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 0};
+    mode->red_yellow[t] = (Tick){.color = YELLOW_COLOR, .duration = 0};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 0};
+    mode->red_yellow[t] = (Tick){.color = YELLOW_COLOR, .duration = 9};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 0};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 0};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 0};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 9};
+  }
 }
 
 void init_mode4(Mode *mode) {
-  mode->green = calloc(sizeof(Tick), MODE_SIZE);
-  mode->red_yellow = calloc(sizeof(Tick), MODE_SIZE);
-  mode->len = MODE_SIZE;
-  mode->green[0] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[0] = (Tick){.color = RED_COLOR, .duration = 9};
-  mode->green[1] = (Tick){.color = GREEN_COLOR, .duration = 0};
-  mode->red_yellow[1] = (Tick){.color = RED_COLOR, .duration = 0};
-  mode->green[2] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[2] = (Tick){.color = RED_COLOR, .duration = 9};
-  mode->green[3] = (Tick){.color = GREEN_COLOR, .duration = 0};
-  mode->red_yellow[3] = (Tick){.color = RED_COLOR, .duration = 0};
-  mode->green[4] = (Tick){.color = GREEN_COLOR, .duration = 9};
-  mode->red_yellow[4] = (Tick){.color = RED_COLOR, .duration = 9};
+	mode->len = MODE_SIZE * DEFAULT_LIGHT_DURATION;
+	  mode->green = calloc(sizeof(Tick), mode->len);
+	  mode->red_yellow = calloc(sizeof(Tick), mode->len);
+  int t;
+  for (int i = 0; i < DEFAULT_LIGHT_DURATION; i++) {
+    t = i;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 9};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 9};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 0};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 0};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 9};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 9};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 0};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 0};
+    t += DEFAULT_LIGHT_DURATION;
+    mode->green[t] = (Tick){.color = GREEN_COLOR, .duration = 9};
+    mode->red_yellow[t] = (Tick){.color = RED_COLOR, .duration = 9};
+  }
 }
 
 void init_mode5(Mode *mode) {
