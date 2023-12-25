@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2023 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -36,6 +36,7 @@
 #define TICK_BUFF_SIZE 200
 #define MAX_DURATION 10
 #define MODES_COUNT 5
+#define LONG_PERIOD_CT 200
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -53,8 +54,8 @@ UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
 uint8_t middle_buffer[MIDDLE_BUFFER_SIZE] = {0};
-uint8_t read_buffer = 0;
-uint8_t output = 1; // сейчас читаем или выводим
+uint8_t read_buffer = 0; //какая кнопка нажата или 0 если клавиатура не нажата
+uint8_t output = 1;      // сейчас читаем или выводим
 Tick green[TICK_BUFF_SIZE] = {};
 Tick red_yellow[TICK_BUFF_SIZE] = {};
 uint8_t tick = 0;
@@ -73,9 +74,17 @@ Input_tick cur_read_tick = {0};
 uint8_t tick_ptr = 0;
 uint8_t tick_len = 0;
 
+uint8_t is_pressed = 0;
+uint8_t is_wait_unpressed = 0;
+uint64_t count_tick = 0;
+uint8_t noisy = 0;
+uint8_t kb_testing = 1; // режим тестирование клавиатуры - 1
+                        // режим работы с гирлядой - 0
+
 /* USER CODE END PV */
 
-/* Private function prototypes -----------------------------------------------*/
+/* Private function prototypes
+   -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
@@ -92,18 +101,18 @@ static void MX_I2C1_Init(void);
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
-int main(void)
-{
+ * @brief  The application entry point.
+ * @retval int
+ */
+int main(void) {
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick.
+   */
   HAL_Init();
 
   /* USER CODE BEGIN Init */
@@ -128,7 +137,7 @@ int main(void)
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
   HAL_TIM_Base_Start_IT((TIM_HandleTypeDef *)&htim1);
-  HAL_UART_Receive_IT(&huart6, (uint8_t*) &read_buffer, 1);
+  HAL_UART_Receive_IT(&huart6, (uint8_t *)&read_buffer, 1);
   init_modes(modes);
   play_new_mode(&modes[0], green, red_yellow, &writing_ptr, &current_write_ptr);
 
@@ -136,8 +145,25 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  while (1) {
+
+    if (0 == is_pressed && 0 == is_wait_unpressed) {
+      // кнопка бездействует
+      if (count_tick > LONG_PERIOD_CT) { // длинная пауза
+      }
+    } else if (0 == is_pressed && 1 == is_wait_unpressed) {
+      // кнопку отпустили
+      is_wait_unpressed = 0;
+      if (count_tick > LONG_PERIOD_CT) { // было длинное нажатие
+      } else { // было короткое нажатие
+      }
+      count_tick = 0;
+    } else if (1 == is_pressed && 0 == is_wait_unpressed) {
+      // кнопку нажали
+      kb_testing = !kb_testing;
+      is_wait_unpressed = 1;
+      count_tick = 0;
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -146,53 +172,49 @@ int main(void)
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
-void SystemClock_Config(void)
-{
+ * @brief System Clock Configuration
+ * @retval None
+ */
+void SystemClock_Config(void) {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
-  */
+   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
+   * in the RCC_OscInitTypeDef structure.
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
     Error_Handler();
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK |
+                                RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
-  {
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK) {
     Error_Handler();
   }
 }
 
 /**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C1_Init(void)
-{
+ * @brief I2C1 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_I2C1_Init(void) {
 
   /* USER CODE BEGIN I2C1_Init 0 */
 
@@ -210,37 +232,32 @@ static void MX_I2C1_Init(void)
   hi2c1.Init.OwnAddress2 = 0;
   hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
   hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK) {
     Error_Handler();
   }
 
   /** Configure Analogue filter
-  */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-  {
+   */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK) {
     Error_Handler();
   }
 
   /** Configure Digital filter
-  */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
-  {
+   */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
-
 }
 
 /**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM1_Init(void)
-{
+ * @brief TIM1 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_TIM1_Init(void) {
 
   /* USER CODE BEGIN TIM1_Init 0 */
 
@@ -254,20 +271,18 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 1600-1;
+  htim1.Init.Prescaler = 1600 - 1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 30-1;
+  htim1.Init.Period = 30 - 1;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_OC_Init(&htim1) != HAL_OK)
-  {
+  if (HAL_TIM_OC_Init(&htim1) != HAL_OK) {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK) {
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_TIMING;
@@ -277,8 +292,7 @@ static void MX_TIM1_Init(void)
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-  if (HAL_TIM_OC_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-  {
+  if (HAL_TIM_OC_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK) {
     Error_Handler();
   }
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
@@ -288,23 +302,20 @@ static void MX_TIM1_Init(void)
   sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
   sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
   sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
-  {
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
-
 }
 
 /**
-  * @brief TIM4 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM4_Init(void)
-{
+ * @brief TIM4 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_TIM4_Init(void) {
 
   /* USER CODE BEGIN TIM4_Init 0 */
 
@@ -318,60 +329,51 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 16-1;
+  htim4.Init.Prescaler = 16 - 1;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim4.Init.Period = 999;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
-  {
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK) {
     Error_Handler();
   }
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
-  {
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK) {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
-  {
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK) {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
-  {
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK) {
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-  {
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2) != HAL_OK) {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-  {
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_3) != HAL_OK) {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
-  {
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_4) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN TIM4_Init 2 */
 
   /* USER CODE END TIM4_Init 2 */
   HAL_TIM_MspPostInit(&htim4);
-
 }
 
 /**
-  * @brief USART6 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART6_UART_Init(void)
-{
+ * @brief USART6 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_USART6_UART_Init(void) {
 
   /* USER CODE BEGIN USART6_Init 0 */
 
@@ -388,26 +390,23 @@ static void MX_USART6_UART_Init(void)
   huart6.Init.Mode = UART_MODE_TX_RX;
   huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart6.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart6) != HAL_OK)
-  {
+  if (HAL_UART_Init(&huart6) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN USART6_Init 2 */
 
   /* USER CODE END USART6_Init 2 */
-
 }
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_GPIO_Init(void) {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -421,230 +420,249 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
 
 void send_user_mode_param() {
-	if (tick_len == 0 && tick_ptr == 0) {
-		send_uart(&huart6, "Not found user configuration!\r");
-	} else {
-		for (int i = 0; i < tick_len; i++) {
-				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-				sprintf((char*) middle_buffer, "\rcolor: %c, bright: %d, duration %d, softness %d\r",
-						tick_buffer[i].color, tick_buffer[i].brightness, tick_buffer[i].duration, tick_buffer[i].softness);
-				send_uart(&huart6, middle_buffer);
-		}
-		if (tick_ptr > 0) {
-			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-			sprintf((char*) middle_buffer, "\rcolor: %c", cur_read_tick.color);
-			send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
-			if (tick_ptr > 1) {
-				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-				sprintf((char*) middle_buffer, ", bright: %d", cur_read_tick.brightness);
-				send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
-				if (tick_ptr > 2) {
-					bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-					printf((char*) middle_buffer, ", duration: %d", cur_read_tick.duration);
-					send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
-				}
-			}
-			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-			sprintf((char*) middle_buffer, "\r");
-			send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
-		}
-	}
+  if (tick_len == 0 && tick_ptr == 0) {
+    send_uart(&huart6, "Not found user configuration!\r");
+  } else {
+    for (int i = 0; i < tick_len; i++) {
+      bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+      sprintf((char *)middle_buffer,
+              "\rcolor: %c, bright: %d, duration %d, softness %d\r",
+              tick_buffer[i].color, tick_buffer[i].brightness,
+              tick_buffer[i].duration, tick_buffer[i].softness);
+      send_uart(&huart6, middle_buffer);
+    }
+    if (tick_ptr > 0) {
+      bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+      sprintf((char *)middle_buffer, "\rcolor: %c", cur_read_tick.color);
+      send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+      if (tick_ptr > 1) {
+        bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+        sprintf((char *)middle_buffer, ", bright: %d",
+                cur_read_tick.brightness);
+        send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+        if (tick_ptr > 2) {
+          bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+          printf((char *)middle_buffer, ", duration: %d",
+                 cur_read_tick.duration);
+          send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+        }
+      }
+      bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+      sprintf((char *)middle_buffer, "\r");
+      send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+    }
+  }
 }
 
 void fill_softnes_and_save_input_tick(uint8_t softness) {
-	tick_ptr = 0;
-	cur_read_tick.softness = softness;
-	memcpy(tick_buffer + tick_len, &cur_read_tick, sizeof(Input_tick));
-	tick_len++;
+  tick_ptr = 0;
+  cur_read_tick.softness = softness;
+  memcpy(tick_buffer + tick_len, &cur_read_tick, sizeof(Input_tick));
+  tick_len++;
 }
 
 void handler_input() {
-	if (output == 1) {
-		switch (read_buffer) {
-		case '1':
-			// to next mode
-			if (mode == 5) {
-				mode = 1;
-			} else {
-				mode++;
-			}
-			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-			middle_buffer[0] = '!';
-			send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
-			play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
-			break;
-		case '2':
-			// to previos mode
-			if (mode == 1) {
-				mode = 5;
-			} else {
-				mode--;
-			}
-			play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
-			break;
-		case '3':
-			// faster
-			new_scaler_speed = scaler_speed - round((double) scaler_speed / 10);
-			if (new_scaler_speed == scaler_speed) {
-				new_scaler_speed--;
-			}
-			if (new_scaler_speed > min_scaler) {
-				scaler_speed = new_scaler_speed;
-			}
-			break;
-		case '4':
-			// slower
-			new_scaler_speed = scaler_speed + round((double) scaler_speed / 10);
-			if (new_scaler_speed == scaler_speed) {
-				new_scaler_speed++;
-			}
-			if (new_scaler_speed < max_scaler) {
-				scaler_speed = new_scaler_speed;
-			}
-			break;
-		case '5':
-			// send current user mode
-			send_user_mode_param();
-			break;
-		case '\r':
-			// ввод в меню настройки
-			output = 0;
-			tick_len = 0;
-			break;
-		default:
-			break;
-		}
-	} else {
-		if (read_buffer == '\r') {
-			if (tick_len != 0) {
-				fill_mode_array(tick_buffer, tick_len, &modes[MODES_COUNT - 1]);
-				tick_ptr = 0;
-			}
-			output = 1;
-		} else {
-			switch (tick_ptr) {
-				case 0:
-					if (tick_len == TICK_BUFF_SIZE) {
-						bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-						sprintf((char*) middle_buffer, "user mode buffer is full!");
-						send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
-					} else {
-						if (read_buffer == 'r' || read_buffer == 'g' || read_buffer == 'y') {
-							tick_ptr++;
-							cur_read_tick.color = read_buffer;
-						}
-					}
-					break;
-				case 1:
-					if (read_buffer >= '1' && read_buffer <= '9'){
-						tick_ptr++;
-						cur_read_tick.brightness = read_buffer - '0';
-					}
-					break;
-				case 2:
-					if (read_buffer >= '1' && read_buffer <= '9'){
-						tick_ptr++;
-						cur_read_tick.duration = read_buffer - '0';
-					}
-					break;
-				case 3:
-					if (read_buffer == '+') {
-						fill_softnes_and_save_input_tick(1);
-					} else if (read_buffer == '-') {
-						fill_softnes_and_save_input_tick(0);
-					}
-					break;
-				default:
-					tick_ptr = 0;
-					break;
-			}
-		}
-	}
+  if (output == 1) {
+    switch (read_buffer) {
+    case '1':
+      // to next mode
+      if (mode == 5) {
+        mode = 1;
+      } else {
+        mode++;
+      }
+      bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+      middle_buffer[0] = '!';
+      send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
+      play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr,
+                    &current_write_ptr);
+      break;
+    case '2':
+      // to previos mode
+      if (mode == 1) {
+        mode = 5;
+      } else {
+        mode--;
+      }
+      play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr,
+                    &current_write_ptr);
+      break;
+    case '3':
+      // faster
+      new_scaler_speed = scaler_speed - round((double)scaler_speed / 10);
+      if (new_scaler_speed == scaler_speed) {
+        new_scaler_speed--;
+      }
+      if (new_scaler_speed > min_scaler) {
+        scaler_speed = new_scaler_speed;
+      }
+      break;
+    case '4':
+      // slower
+      new_scaler_speed = scaler_speed + round((double)scaler_speed / 10);
+      if (new_scaler_speed == scaler_speed) {
+        new_scaler_speed++;
+      }
+      if (new_scaler_speed < max_scaler) {
+        scaler_speed = new_scaler_speed;
+      }
+      break;
+    case '5':
+      // send current user mode
+      send_user_mode_param();
+      break;
+    case '\r':
+      // ввод в меню настройки
+      output = 0;
+      tick_len = 0;
+      break;
+    default:
+      break;
+    }
+  } else {
+    if (read_buffer == '\r') {
+      if (tick_len != 0) {
+        fill_mode_array(tick_buffer, tick_len, &modes[MODES_COUNT - 1]);
+        tick_ptr = 0;
+      }
+      output = 1;
+    } else {
+      switch (tick_ptr) {
+      case 0:
+        if (tick_len == TICK_BUFF_SIZE) {
+          bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+          sprintf((char *)middle_buffer, "user mode buffer is full!");
+          send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+        } else {
+          if (read_buffer == 'r' || read_buffer == 'g' || read_buffer == 'y') {
+            tick_ptr++;
+            cur_read_tick.color = read_buffer;
+          }
+        }
+        break;
+      case 1:
+        if (read_buffer >= '1' && read_buffer <= '9') {
+          tick_ptr++;
+          cur_read_tick.brightness = read_buffer - '0';
+        }
+        break;
+      case 2:
+        if (read_buffer >= '1' && read_buffer <= '9') {
+          tick_ptr++;
+          cur_read_tick.duration = read_buffer - '0';
+        }
+        break;
+      case 3:
+        if (read_buffer == '+') {
+          fill_softnes_and_save_input_tick(1);
+        } else if (read_buffer == '-') {
+          fill_softnes_and_save_input_tick(0);
+        }
+        break;
+      default:
+        tick_ptr = 0;
+        break;
+      }
+    }
+  }
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-  if (huart->Instance == USART6)
-  {
+/*void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+  if (huart->Instance == USART6) {
     // USART6 завершил прием данных
-	  //send_uart(huart, (uint8_t*) &read_buffer, sizeof(uint8_t)); эхо
-	  handler_input();
-	  if (output == 1) {
-		  // режим проигрывания - выводим номер мелодии и скорость
-		  bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-		  sprintf((char*) middle_buffer, "mode: %d, speed: %ld", mode, scaler_speed);
-		  send_uart(huart, middle_buffer, strlen((char*)middle_buffer));
-	  } else {
-		  // режим пользовательской конфигурации - выводим ту которая есть сейчас
-		  // send current user configuration
-		  send_user_mode_param();
-	  }
-	  HAL_UART_Receive_IT(huart, (uint8_t*) &read_buffer, 1);
+    // send_uart(huart, (uint8_t*) &read_buffer, sizeof(uint8_t)); эхо
+    HAL_UART_Receive_IT(huart, (uint8_t *)&read_buffer, 1);
   }
-}
+}*/
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  if(htim->Instance==TIM1){
-	  if (output > 0) {
-		  tick++;
-		  if (tick >= (MAX_DURATION * scaler_speed)) { // scaler как-то сюда добавлять
-		     tick = 0;
-		     current_write_ptr++;
-		     if (current_write_ptr == writing_ptr) {
-		       current_write_ptr = 0;
-		     }
-		  }
-		  htim4.Instance->CCR2 = 100 * green[current_write_ptr].duration;
-		  htim4.Instance->CCR3 = 0;
-		  htim4.Instance->CCR4 = 0;
-		  if (red_yellow[current_write_ptr].color == RED_COLOR) {
-			  htim4.Instance->CCR4 = 100 * red_yellow[current_write_ptr].duration;
-		  } else {
-			  htim4.Instance->CCR3 = 100 * red_yellow[current_write_ptr].duration;
-		  }
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+  if (htim->Instance == TIM1) {
+    if (output > 0) {
+      tick++;
+      if (tick % 5 == 0) { // логика работы с дребезгом и кнопками
+        int but = HAL_GPIO_ReadPin(BUT_GPIO_Port, BUT_Pin);
+        but = !but;
 
-	  }
+        if (but == 1 && noisy == 0) {
+          noisy = 1;
+        } else if (but == 1 && noisy == 1) {
+          is_pressed = 1;
+          count_tick++;
+        } else if (noisy == 1 && but == 0) {
+          noisy = 0;
+        } else if (but == 0 && noisy == 0) {
+          is_pressed = 0;
+          count_tick++;
+        }
+
+        handler_input();
+        if (output == 1) {
+          // режим проигрывания - выводим номер мелодии и скорость
+          bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+          sprintf((char *)middle_buffer, "mode: %d, speed: %ld", mode,
+                  scaler_speed);
+          send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+        } else {
+          // режим пользовательской конфигурации - выводим ту которая есть
+          // сейчас send current user configuration
+          send_user_mode_param();
+        }
+      }
+
+      if (tick >=
+          (MAX_DURATION * scaler_speed)) { // scaler как-то сюда добавлять
+        tick = 0;
+        current_write_ptr++;
+        if (current_write_ptr == writing_ptr) {
+          current_write_ptr = 0;
+        }
+      }
+      htim4.Instance->CCR2 = 100 * green[current_write_ptr].duration;
+      htim4.Instance->CCR3 = 0;
+      htim4.Instance->CCR4 = 0;
+      if (red_yellow[current_write_ptr].color == RED_COLOR) {
+        htim4.Instance->CCR4 = 100 * red_yellow[current_write_ptr].duration;
+      } else {
+        htim4.Instance->CCR3 = 100 * red_yellow[current_write_ptr].duration;
+      }
+    }
   }
-
 }
 
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
-void Error_Handler(void)
-{
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
+void Error_Handler(void) {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1)
-  {
+  while (1) {
   }
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t *file, uint32_t line)
-{
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
+void assert_failed(uint8_t *file, uint32_t line) {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
+  /* User can add his own implementation to report the file name and line
+     number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }

@@ -1,0 +1,13 @@
+.metadata/
+RemoteSystemsTempFiles/
+lab*/.settings/
+lab*/Debug/
+lab*/Drivers/
+lab*/.cproject
+lab*/.mxproject
+lab*/.project
+lab*/lab* Debug.cfg
+lab*/lab* Debug.launch
+lab*/lab*.ioc
+lab*/STM32F427VITX_FLASH.ld
+lab*/STM32F427VITX_RAM.ld
