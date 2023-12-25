@@ -74,10 +74,14 @@ Input_tick cur_read_tick = {0};
 uint8_t tick_ptr = 0;
 uint8_t tick_len = 0;
 
-uint8_t is_pressed = 0;
-uint8_t is_wait_unpressed = 0;
 uint64_t count_tick = 0;
-uint8_t noisy = 0;
+
+uint8_t is_pressed_but = 0;
+uint8_t noisy_but = 0;
+
+uint8_t is_pressed_key = 0;
+uint8_t noisy_key = 0;
+
 uint8_t kb_testing = 1; // режим тестирование клавиатуры - 1
                         // режим работы с гирлядой - 0
 
@@ -476,23 +480,20 @@ void fill_softnes_and_save_input_tick(uint8_t softness) {
   tick_len++;
 }
 
-void handler_input() {
+void handler_input(uint8_t pressed_key) {
   if (output == 1) {
-    switch (read_buffer) {
-    case '1':
+    switch (pressed_key) {
+    case 1:
       // to next mode
       if (mode == 5) {
         mode = 1;
       } else {
         mode++;
       }
-      bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-      middle_buffer[0] = '!';
-      send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
       play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr,
                     &current_write_ptr);
       break;
-    case '2':
+    case 2:
       // to previos mode
       if (mode == 1) {
         mode = 5;
@@ -502,7 +503,7 @@ void handler_input() {
       play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr,
                     &current_write_ptr);
       break;
-    case '3':
+    case 3:
       // faster
       new_scaler_speed = scaler_speed - round((double)scaler_speed / 10);
       if (new_scaler_speed == scaler_speed) {
@@ -512,7 +513,7 @@ void handler_input() {
         scaler_speed = new_scaler_speed;
       }
       break;
-    case '4':
+    case 4:
       // slower
       new_scaler_speed = scaler_speed + round((double)scaler_speed / 10);
       if (new_scaler_speed == scaler_speed) {
@@ -522,11 +523,11 @@ void handler_input() {
         scaler_speed = new_scaler_speed;
       }
       break;
-    case '5':
+    case 5:
       // send current user mode
       send_user_mode_param();
       break;
-    case '\r':
+    case 9:
       // ввод в меню настройки
       output = 0;
       tick_len = 0;
@@ -535,7 +536,7 @@ void handler_input() {
       break;
     }
   } else {
-    if (read_buffer == '\r') {
+    if (pressed_key == 9) {
       if (tick_len != 0) {
         fill_mode_array(tick_buffer, tick_len, &modes[MODES_COUNT - 1]);
         tick_ptr = 0;
@@ -546,9 +547,9 @@ void handler_input() {
       case 0:
         if (tick_len == TICK_BUFF_SIZE) {
           bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-          sprintf((char *)middle_buffer, "user mode buffer is full!");
-          send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+          send_uart(&huart6, "user mode buffer is full!");
         } else {
+        	// todo переписать на клавиатуру
           if (read_buffer == 'r' || read_buffer == 'g' || read_buffer == 'y') {
             tick_ptr++;
             cur_read_tick.color = read_buffer;
@@ -677,6 +678,29 @@ uint8_t get_pressed_key() {
 	return result;
 }
 
+void handler_pressed_key(uint8_t pressed_key) {
+	if (kb_testing == 0) {
+	// режим практической работы
+	   handler_input(pressed_key);
+	   if (output == 1) {
+	     // режим проигрывания - выводим номер мелодии и скорость
+	     bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+	     sprintf((char *)middle_buffer, "mode: %d, speed: %ld", mode,
+	        		        	                  scaler_speed);
+	     send_uart(&huart6, middle_buffer);
+	    } else {
+	       // режим пользовательской конфигурации - выводим ту которая есть
+	       // сейчас send current user configuration
+	       send_user_mode_param();
+	    }
+	} else {
+		// режим тестирования
+		bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+		sprintf((char *)middle_buffer, "%d", pressed_key);
+		send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+	}
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   if (htim->Instance == TIM1) {
     if (output > 0) {
@@ -685,31 +709,36 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         int but = HAL_GPIO_ReadPin(BUT_GPIO_Port, BUT_Pin);
         but = !but;
 
-        if (but == 1 && noisy == 0) {
-          noisy = 1;
-        } else if (but == 1 && noisy == 1) {
-          is_pressed = 1;
-          count_tick++;
-        } else if (noisy == 1 && but == 0) {
-          noisy = 0;
-        } else if (but == 0 && noisy == 0) {
-          is_pressed = 0;
-          count_tick++;
+        if (but == 1 && noisy_but == 0) {
+        	noisy_but = 1;
+        } else if (but == 1 && noisy_but == 1) {
+          if (is_pressed_but == 0) {
+        	  is_pressed_but = 1;
+        	  kb_testing = !kb_testing;
+          }
+          //count_tick++;
+        } else if (noisy_but == 1 && but == 0) {
+          noisy_but = 0;
+        } else if (but == 0 && noisy_but == 0) {
+          is_pressed_but = 0;
+          //count_tick++;
         }
 
-
-        handler_input();
-        if (output == 1) {
-          // режим проигрывания - выводим номер мелодии и скорость
-          bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-          sprintf((char *)middle_buffer, "mode: %d, speed: %ld", mode,
-                  scaler_speed);
-          send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
-        } else {
-          // режим пользовательской конфигурации - выводим ту которая есть
-          // сейчас send current user configuration
-          send_user_mode_param();
+        uint8_t p_key = get_pressed_key();
+        if (p_key != 0 && noisy_key == 0) {
+        	noisy_key = p_key;
+        } else if (p_key != 0 && noisy_key == p_key) {
+        	if (is_pressed_key == 0) {
+        		is_pressed_key = 1;
+        		handler_pressed_key(p_key);
+        	}
+        } else if (noisy_key != 0 && p_key == 0) {
+        	// додумать про то если дребезг не на 0 или 1, а на разные кнопки
+        	noisy_key = 0;
+        } else if (noisy_key == 0 && p_key == 0) {
+        	is_pressed_key = 0;
         }
+
       }
 
       if (tick >=

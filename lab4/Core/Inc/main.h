@@ -35,6 +35,7 @@ extern "C" {
 #include <string.h>
 #include <stdlib.h>
 #include "garland.h"
+#include "kb.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
