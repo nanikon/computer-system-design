@@ -551,7 +551,7 @@ void handler_input(uint8_t pressed_key) {
         			cur_read_tick.color = 'g';
         		} else if (pressed_key == 2) {
         			cur_read_tick.color = 'y';
-        		} else if (pressed_key == 2) {
+        		} else if (pressed_key == 3) {
         		    cur_read_tick.color = 'r';
         		}
         	}
@@ -705,23 +705,21 @@ void handler_pressed_key(uint8_t pressed_key) {
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   if (htim->Instance == TIM1) {
 	  tick++;
-	        if (tick % 5 == 0) { // логика работы с дребезгом и кнопками
-	          int but = HAL_GPIO_ReadPin(BUT_GPIO_Port, BUT_Pin);
-	          but = !but;
+  if (tick % 5 == 0) { // логика работы с дребезгом и кнопками
+	int but = HAL_GPIO_ReadPin(BUT_GPIO_Port, BUT_Pin);
+	but = !but;
 
-	          if (but == 1 && noisy_but == 0) {
-	          	noisy_but = 1;
-	          } else if (but == 1 && noisy_but == 1) {
+	 if (but == 1 && noisy_but == 0) {
+	    noisy_but = 1;
+	 } else if (but == 1 && noisy_but == 1) {
 	            if (is_pressed_but == 0) {
 	          	  is_pressed_but = 1;
 	          	  kb_testing = !kb_testing;
 	            }
-	            //count_tick++;
-	          } else if (noisy_but == 1 && but == 0) {
+	     } else if (noisy_but == 1 && but == 0) {
 	            noisy_but = 0;
-	          } else if (but == 0 && noisy_but == 0) {
+	     } else if (but == 0 && noisy_but == 0) {
 	            is_pressed_but = 0;
-	            //count_tick++;
 	          }
 
 	          uint8_t p_key = get_pressed_key();
