@@ -569,6 +569,101 @@ void handler_input() {
 	}
 }
 
+uint8_t get_pressed_key() {
+	uint8_t count_pressed_key = 0;
+	uint8_t rows[4] = { 0xF7, 0x7B, 0x3D, 0x1E }, checkedRow;
+	uint8_t result = 0;
+	for (int i = 0; i < 4; i++) {
+		checkedRow = Check_Row(rows[i], hi2c1);
+		switch (i) {
+		case 0:
+			switch (checkedRow) {
+			case 0x0:
+				break;
+			case 0x01:
+				result = 1;
+				count_pressed_key++;
+				break;
+			case 0x02:
+				result = 2;
+				count_pressed_key++;
+				break;
+			case 0x04:
+				result = 3;
+				count_pressed_key++;
+				break;
+			default:
+				count_pressed_key += 2;
+			}
+			break;
+		case 1:
+			switch (checkedRow) {
+			case 0x0:
+				break;
+			case 0x01:
+				result = 4;
+				count_pressed_key++;
+				break;
+			case 0x02:
+				result = 5;
+				count_pressed_key++;
+				break;
+			case 0x04:
+				result = 6;
+				count_pressed_key++;
+				break;
+			default:
+				count_pressed_key += 2;
+			}
+			break;
+		case 2:
+			switch (checkedRow) {
+			case 0x0:
+				break;
+			case 0x01:
+				result = 7;
+				count_pressed_key++;
+				break;
+			case 0x02:
+				result = 8;
+				count_pressed_key++;
+				break;
+			case 0x04:
+				result = 9;
+				count_pressed_key++;
+				break;
+			default:
+				count_pressed_key += 2;
+			}
+			break;
+		case 3:
+			switch (checkedRow) {
+			case 0x0:
+				break;
+			case 0x01:
+				result = 10;
+				count_pressed_key++;
+				break;
+			case 0x02:
+				result = 11;
+				count_pressed_key++;
+				break;
+			case 0x04:
+				result = 12;
+				count_pressed_key++;
+				break;
+			default:
+				count_pressed_key += 2;
+			}
+			break;
+		}
+	}
+	if (count_pressed_key > 1) {
+		result = 0;
+	}
+	return result;
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart->Instance == USART6)
