@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2023 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -36,6 +36,7 @@
 #define TICK_BUFF_SIZE 200
 #define MAX_DURATION 10
 #define MODES_COUNT 5
+#define LONG_PERIOD_CT 200
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -53,8 +54,8 @@ UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
 uint8_t middle_buffer[MIDDLE_BUFFER_SIZE] = {0};
-uint8_t read_buffer = 0;
-uint8_t output = 1; // сейчас читаем или выводим
+uint8_t read_buffer = 0; //какая кнопка нажата или 0 если клавиатура не нажата
+uint8_t output = 1;      // сейчас читаем или выводим
 Tick green[TICK_BUFF_SIZE] = {};
 Tick red_yellow[TICK_BUFF_SIZE] = {};
 uint8_t tick = 0;
@@ -72,6 +73,13 @@ Input_tick tick_buffer[INPUT_TICK_BUFFER_SIZE] = {};
 Input_tick cur_read_tick = {0};
 uint8_t tick_ptr = 0;
 uint8_t tick_len = 0;
+
+uint8_t is_pressed = 0;
+uint8_t is_wait_unpressed = 0;
+uint64_t count_tick = 0;
+uint8_t noisy = 0;
+uint8_t kb_testing = 1; // режим тестирование клавиатуры - 1
+                        // режим работы с гирлядой - 0
 
 /* USER CODE END PV */
 
@@ -128,7 +136,7 @@ int main(void)
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
   HAL_TIM_Base_Start_IT((TIM_HandleTypeDef *)&htim1);
-  HAL_UART_Receive_IT(&huart6, (uint8_t*) &read_buffer, 1);
+  HAL_UART_Receive_IT(&huart6, (uint8_t *)&read_buffer, 1);
   init_modes(modes);
   play_new_mode(&modes[0], green, red_yellow, &writing_ptr, &current_write_ptr);
 
@@ -136,8 +144,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -415,11 +422,11 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
-  /*Configure GPIO pin : PC15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_15;
+  /*Configure GPIO pin : BUT_Pin */
+  GPIO_InitStruct.Pin = BUT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(BUT_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -428,145 +435,151 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 void send_user_mode_param() {
-	if (tick_len == 0 && tick_ptr == 0) {
-		send_uart(&huart6, "Not found user configuration!\r");
-	} else {
-		for (int i = 0; i < tick_len; i++) {
-				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-				sprintf((char*) middle_buffer, "\rcolor: %c, bright: %d, duration %d, softness %d\r",
-						tick_buffer[i].color, tick_buffer[i].brightness, tick_buffer[i].duration, tick_buffer[i].softness);
-				send_uart(&huart6, middle_buffer);
-		}
-		if (tick_ptr > 0) {
-			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-			sprintf((char*) middle_buffer, "\rcolor: %c", cur_read_tick.color);
-			send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
-			if (tick_ptr > 1) {
-				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-				sprintf((char*) middle_buffer, ", bright: %d", cur_read_tick.brightness);
-				send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
-				if (tick_ptr > 2) {
-					bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-					printf((char*) middle_buffer, ", duration: %d", cur_read_tick.duration);
-					send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
-				}
-			}
-			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-			sprintf((char*) middle_buffer, "\r");
-			send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
-		}
-	}
+  if (tick_len == 0 && tick_ptr == 0) {
+    send_uart(&huart6, "Not found user configuration!\r");
+  } else {
+    for (int i = 0; i < tick_len; i++) {
+      bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+      sprintf((char *)middle_buffer,
+              "\rcolor: %c, bright: %d, duration %d, softness %d\r",
+              tick_buffer[i].color, tick_buffer[i].brightness,
+              tick_buffer[i].duration, tick_buffer[i].softness);
+      send_uart(&huart6, middle_buffer);
+    }
+    if (tick_ptr > 0) {
+      bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+      sprintf((char *)middle_buffer, "\rcolor: %c", cur_read_tick.color);
+      send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+      if (tick_ptr > 1) {
+        bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+        sprintf((char *)middle_buffer, ", bright: %d",
+                cur_read_tick.brightness);
+        send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+        if (tick_ptr > 2) {
+          bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+          printf((char *)middle_buffer, ", duration: %d",
+                 cur_read_tick.duration);
+          send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+        }
+      }
+      bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+      sprintf((char *)middle_buffer, "\r");
+      send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+    }
+  }
 }
 
 void fill_softnes_and_save_input_tick(uint8_t softness) {
-	tick_ptr = 0;
-	cur_read_tick.softness = softness;
-	memcpy(tick_buffer + tick_len, &cur_read_tick, sizeof(Input_tick));
-	tick_len++;
+  tick_ptr = 0;
+  cur_read_tick.softness = softness;
+  memcpy(tick_buffer + tick_len, &cur_read_tick, sizeof(Input_tick));
+  tick_len++;
 }
 
 void handler_input() {
-	if (output == 1) {
-		switch (read_buffer) {
-		case '1':
-			// to next mode
-			if (mode == 5) {
-				mode = 1;
-			} else {
-				mode++;
-			}
-			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-			middle_buffer[0] = '!';
-			send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
-			play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
-			break;
-		case '2':
-			// to previos mode
-			if (mode == 1) {
-				mode = 5;
-			} else {
-				mode--;
-			}
-			play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
-			break;
-		case '3':
-			// faster
-			new_scaler_speed = scaler_speed - round((double) scaler_speed / 10);
-			if (new_scaler_speed == scaler_speed) {
-				new_scaler_speed--;
-			}
-			if (new_scaler_speed > min_scaler) {
-				scaler_speed = new_scaler_speed;
-			}
-			break;
-		case '4':
-			// slower
-			new_scaler_speed = scaler_speed + round((double) scaler_speed / 10);
-			if (new_scaler_speed == scaler_speed) {
-				new_scaler_speed++;
-			}
-			if (new_scaler_speed < max_scaler) {
-				scaler_speed = new_scaler_speed;
-			}
-			break;
-		case '5':
-			// send current user mode
-			send_user_mode_param();
-			break;
-		case '\r':
-			// ввод в меню настройки
-			output = 0;
-			tick_len = 0;
-			break;
-		default:
-			break;
-		}
-	} else {
-		if (read_buffer == '\r') {
-			if (tick_len != 0) {
-				fill_mode_array(tick_buffer, tick_len, &modes[MODES_COUNT - 1]);
-				tick_ptr = 0;
-			}
-			output = 1;
-		} else {
-			switch (tick_ptr) {
-				case 0:
-					if (tick_len == TICK_BUFF_SIZE) {
-						bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-						sprintf((char*) middle_buffer, "user mode buffer is full!");
-						send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
-					} else {
-						if (read_buffer == 'r' || read_buffer == 'g' || read_buffer == 'y') {
-							tick_ptr++;
-							cur_read_tick.color = read_buffer;
-						}
-					}
-					break;
-				case 1:
-					if (read_buffer >= '1' && read_buffer <= '9'){
-						tick_ptr++;
-						cur_read_tick.brightness = read_buffer - '0';
-					}
-					break;
-				case 2:
-					if (read_buffer >= '1' && read_buffer <= '9'){
-						tick_ptr++;
-						cur_read_tick.duration = read_buffer - '0';
-					}
-					break;
-				case 3:
-					if (read_buffer == '+') {
-						fill_softnes_and_save_input_tick(1);
-					} else if (read_buffer == '-') {
-						fill_softnes_and_save_input_tick(0);
-					}
-					break;
-				default:
-					tick_ptr = 0;
-					break;
-			}
-		}
-	}
+  if (output == 1) {
+    switch (read_buffer) {
+    case '1':
+      // to next mode
+      if (mode == 5) {
+        mode = 1;
+      } else {
+        mode++;
+      }
+      bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+      middle_buffer[0] = '!';
+      send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
+      play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr,
+                    &current_write_ptr);
+      break;
+    case '2':
+      // to previos mode
+      if (mode == 1) {
+        mode = 5;
+      } else {
+        mode--;
+      }
+      play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr,
+                    &current_write_ptr);
+      break;
+    case '3':
+      // faster
+      new_scaler_speed = scaler_speed - round((double)scaler_speed / 10);
+      if (new_scaler_speed == scaler_speed) {
+        new_scaler_speed--;
+      }
+      if (new_scaler_speed > min_scaler) {
+        scaler_speed = new_scaler_speed;
+      }
+      break;
+    case '4':
+      // slower
+      new_scaler_speed = scaler_speed + round((double)scaler_speed / 10);
+      if (new_scaler_speed == scaler_speed) {
+        new_scaler_speed++;
+      }
+      if (new_scaler_speed < max_scaler) {
+        scaler_speed = new_scaler_speed;
+      }
+      break;
+    case '5':
+      // send current user mode
+      send_user_mode_param();
+      break;
+    case '\r':
+      // ввод в меню настройки
+      output = 0;
+      tick_len = 0;
+      break;
+    default:
+      break;
+    }
+  } else {
+    if (read_buffer == '\r') {
+      if (tick_len != 0) {
+        fill_mode_array(tick_buffer, tick_len, &modes[MODES_COUNT - 1]);
+        tick_ptr = 0;
+      }
+      output = 1;
+    } else {
+      switch (tick_ptr) {
+      case 0:
+        if (tick_len == TICK_BUFF_SIZE) {
+          bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+          sprintf((char *)middle_buffer, "user mode buffer is full!");
+          send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+        } else {
+          if (read_buffer == 'r' || read_buffer == 'g' || read_buffer == 'y') {
+            tick_ptr++;
+            cur_read_tick.color = read_buffer;
+          }
+        }
+        break;
+      case 1:
+        if (read_buffer >= '1' && read_buffer <= '9') {
+          tick_ptr++;
+          cur_read_tick.brightness = read_buffer - '0';
+        }
+        break;
+      case 2:
+        if (read_buffer >= '1' && read_buffer <= '9') {
+          tick_ptr++;
+          cur_read_tick.duration = read_buffer - '0';
+        }
+        break;
+      case 3:
+        if (read_buffer == '+') {
+          fill_softnes_and_save_input_tick(1);
+        } else if (read_buffer == '-') {
+          fill_softnes_and_save_input_tick(0);
+        }
+        break;
+      default:
+        tick_ptr = 0;
+        break;
+      }
+    }
+  }
 }
 
 uint8_t get_pressed_key() {
@@ -664,51 +677,59 @@ uint8_t get_pressed_key() {
 	return result;
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-  if (huart->Instance == USART6)
-  {
-    // USART6 завершил прием данных
-	  //send_uart(huart, (uint8_t*) &read_buffer, sizeof(uint8_t)); эхо
-	  handler_input();
-	  if (output == 1) {
-		  // режим проигрывания - выводим номер мелодии и скорость
-		  bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-		  sprintf((char*) middle_buffer, "mode: %d, speed: %ld", mode, scaler_speed);
-		  send_uart(huart, middle_buffer, strlen((char*)middle_buffer));
-	  } else {
-		  // режим пользовательской конфигурации - выводим ту которая есть сейчас
-		  // send current user configuration
-		  send_user_mode_param();
-	  }
-	  HAL_UART_Receive_IT(huart, (uint8_t*) &read_buffer, 1);
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+  if (htim->Instance == TIM1) {
+    if (output > 0) {
+      tick++;
+      if (tick % 5 == 0) { // логика работы с дребезгом и кнопками
+        int but = HAL_GPIO_ReadPin(BUT_GPIO_Port, BUT_Pin);
+        but = !but;
+
+        if (but == 1 && noisy == 0) {
+          noisy = 1;
+        } else if (but == 1 && noisy == 1) {
+          is_pressed = 1;
+          count_tick++;
+        } else if (noisy == 1 && but == 0) {
+          noisy = 0;
+        } else if (but == 0 && noisy == 0) {
+          is_pressed = 0;
+          count_tick++;
+        }
+
+
+        handler_input();
+        if (output == 1) {
+          // режим проигрывания - выводим номер мелодии и скорость
+          bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+          sprintf((char *)middle_buffer, "mode: %d, speed: %ld", mode,
+                  scaler_speed);
+          send_uart(&huart6, middle_buffer, strlen((char *)middle_buffer));
+        } else {
+          // режим пользовательской конфигурации - выводим ту которая есть
+          // сейчас send current user configuration
+          send_user_mode_param();
+        }
+      }
+
+      if (tick >=
+          (MAX_DURATION * scaler_speed)) { // scaler как-то сюда добавлять
+        tick = 0;
+        current_write_ptr++;
+        if (current_write_ptr == writing_ptr) {
+          current_write_ptr = 0;
+        }
+      }
+      htim4.Instance->CCR2 = 100 * green[current_write_ptr].duration;
+      htim4.Instance->CCR3 = 0;
+      htim4.Instance->CCR4 = 0;
+      if (red_yellow[current_write_ptr].color == RED_COLOR) {
+        htim4.Instance->CCR4 = 100 * red_yellow[current_write_ptr].duration;
+      } else {
+        htim4.Instance->CCR3 = 100 * red_yellow[current_write_ptr].duration;
+      }
+    }
   }
-}
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  if(htim->Instance==TIM1){
-	  if (output > 0) {
-		  tick++;
-		  if (tick >= (MAX_DURATION * scaler_speed)) { // scaler как-то сюда добавлять
-		     tick = 0;
-		     current_write_ptr++;
-		     if (current_write_ptr == writing_ptr) {
-		       current_write_ptr = 0;
-		     }
-		  }
-		  htim4.Instance->CCR2 = 100 * green[current_write_ptr].duration;
-		  htim4.Instance->CCR3 = 0;
-		  htim4.Instance->CCR4 = 0;
-		  if (red_yellow[current_write_ptr].color == RED_COLOR) {
-			  htim4.Instance->CCR4 = 100 * red_yellow[current_write_ptr].duration;
-		  } else {
-			  htim4.Instance->CCR3 = 100 * red_yellow[current_write_ptr].duration;
-		  }
-
-	  }
-  }
-
 }
 
 /* USER CODE END 4 */
@@ -722,8 +743,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1)
-  {
+  while (1) {
   }
   /* USER CODE END Error_Handler_Debug */
 }
@@ -739,7 +759,8 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
+  /* User can add his own implementation to report the file name and line
+     number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
