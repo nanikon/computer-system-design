@@ -31,7 +31,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define WRITE_BUFFER_SIZE 512
 #define MIDDLE_BUFFER_SIZE 100
 #define INPUT_TICK_BUFFER_SIZE 20
 #define TICK_BUFF_SIZE 200
@@ -53,6 +52,7 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
+uint8_t middle_buffer[MIDDLE_BUFFER_SIZE] = {0};
 uint8_t read_buffer = 0;
 uint8_t output = 1; // сейчас читаем или выводим
 Tick green[TICK_BUFF_SIZE] = {};
@@ -61,11 +61,6 @@ uint8_t tick = 0;
 uint32_t writing_ptr;
 uint32_t current_write_ptr;
 Mode modes[MODES_COUNT] = {0};
-
-uint8_t buffer_to_write[WRITE_BUFFER_SIZE] = {}; // буфер на передачу
-uint8_t middle_buffer[MIDDLE_BUFFER_SIZE] = {};
-size_t start_write = 0; // номер символа с которого начинать передачу
-size_t end_write = 0;
 
 uint8_t mode = 1;
 uint32_t min_scaler = 1;
@@ -410,98 +405,37 @@ static void MX_USART6_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin : PC15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
-void send_buffer_if_not_empty_IT(UART_HandleTypeDef *huart){
-	if (start_write != end_write) {
-		HAL_UART_Transmit_IT(huart, (uint8_t*) (buffer_to_write + start_write), 1);
-		start_write++;
-		if (start_write == WRITE_BUFFER_SIZE) {
-			start_write = 0;
-			if (end_write == WRITE_BUFFER_SIZE) {
-				end_write = 0;
-			}
-		}
-	}
-}
-
-void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size) {
-	// добавить данные в буффер
-	char state = HAL_UART_GetState(huart);
-	if (buf_size > WRITE_BUFFER_SIZE - end_write) {
-		size_t first_size = WRITE_BUFFER_SIZE - end_write;
-		if (first_size > 0) {
-			memcpy(buffer_to_write + end_write, buffer, first_size);
-		}
-		memcpy(buffer_to_write, buffer, buf_size - first_size);
-		end_write = buf_size - first_size;
-	} else {
-		memcpy(buffer_to_write + end_write, buffer, buf_size);
-		end_write += buf_size;
-	}
-
-	if (state != HAL_UART_STATE_BUSY_TX) {
-		// свободно, начать передачу
-		send_buffer_if_not_empty_IT(huart);
-	}
-}
-
-void KB_Test( void ) {
-  //UART_Transmit( (uint8_t*)"KB test start\n" );
-  uint8_t R = 0, C = 0, L = 0, Row[4] = {ROW4, ROW3, ROW2, ROW1}, Key, OldKey;
-  for ( int i = 0; i < 4; i++ ) {
-    while( !( R && C && L ) ) {
-      OldKey = Key;
-      Key = Check_Row( Row[i] );
-      if ( Key == 0x01 && Key != OldKey) {
-        //UART_Transmit( (uint8_t*)"Right pressed\n" );
-        R = 1;
-      } else if ( Key == 0x02 && Key != OldKey) {
-        //UART_Transmit( (uint8_t*)"Center pressed\n" );
-        C = 1;
-      } else if ( Key == 0x04 && Key != OldKey) {
-        //UART_Transmit( (uint8_t*)"Left pressed\n" );
-        L = 1;
-      }
-    }
-    //UART_Transmit( (uint8_t*)"Row complete\n" );
-    R = C = L = 0;
-    HAL_Delay(25);
-  }
-  //UART_Transmit( (uint8_t*)"KB test complete\n");
-}
-
-
-void play_new_mode(Mode *mode, Tick *green, Tick *red_yellow, uint32_t *writing_ptr, uint32_t *current_write_ptr) {
-  memcpy(green, mode->green, sizeof(Tick) * mode->len);
-  memcpy(red_yellow, mode->red_yellow, sizeof(Tick) * mode->len);
-  *writing_ptr = mode->len;
-  *current_write_ptr = 0;
-}
 
 void send_user_mode_param() {
 	if (tick_len == 0 && tick_ptr == 0) {
-		bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
-		sprintf((char*) middle_buffer, "Not found user configuration!\r");
-		send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
+		send_uart(&huart6, "Not found user configuration!\r");
 	} else {
 		for (int i = 0; i < tick_len; i++) {
 				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
 				sprintf((char*) middle_buffer, "\rcolor: %c, bright: %d, duration %d, softness %d\r",
 						tick_buffer[i].color, tick_buffer[i].brightness, tick_buffer[i].duration, tick_buffer[i].softness);
-				send_uart(&huart6, middle_buffer, strlen((char*)middle_buffer));
+				send_uart(&huart6, middle_buffer);
 		}
 		if (tick_ptr > 0) {
 			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
@@ -653,14 +587,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		  send_user_mode_param();
 	  }
 	  HAL_UART_Receive_IT(huart, (uint8_t*) &read_buffer, 1);
-  }
-}
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
-  if (huart->Instance == USART6)
-  {
-      // USART6 завершил отправку данных
-	  send_buffer_if_not_empty_IT(huart);
   }
 }
 

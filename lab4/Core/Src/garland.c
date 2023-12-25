@@ -99,6 +99,13 @@ void fill_mode_array(Input_tick *array, uint8_t len, Mode *mode) {
   }
 }
 
+void play_new_mode(Mode *mode, Tick *green, Tick *red_yellow, uint32_t *writing_ptr, uint32_t *current_write_ptr) {
+  memcpy(green, mode->green, sizeof(Tick) * mode->len);
+  memcpy(red_yellow, mode->red_yellow, sizeof(Tick) * mode->len);
+  *writing_ptr = mode->len;
+  *current_write_ptr = 0;
+}
+
 void play_green(uint8_t tick, Tick *green, uint32_t current_write_ptr) {
   Tick cur = green[current_write_ptr];
   if (tick < cur.duration)

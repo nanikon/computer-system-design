@@ -1,6 +1,7 @@
-#include "main.h"
+//#include "main.h"
 #include "pca9538.h"
 #include "kb.h"
+#include "uart_irq.h"
 
 #define KBRD_RD_ADDR 0xE3
 #define KBRD_WR_ADDR 0xE2
@@ -9,47 +10,47 @@
 #define ROW3 0x7B
 #define ROW4 0xF7
 
-HAL_StatusTypeDef Set_Keyboard( void ) {
+HAL_StatusTypeDef Set_Keyboard(I2C_HandleTypeDef hi2c1) {
 	HAL_StatusTypeDef ret = HAL_OK;
 	uint8_t buf;
 
 	buf=0x70;
-	ret = PCA9538_Write_Register(KBRD_WR_ADDR, CONFIG, &buf);
+	ret = PCA9538_Write_Register(KBRD_WR_ADDR, CONFIG, &buf, hi2c1);
 	if( ret != HAL_OK ) {
-		UART_Transmit("Error write config\n");
+		//UART_Transmit("Error write config\n");
 		goto exit;
 	}
 
 	buf = 0;
-	ret = PCA9538_Write_Register(KBRD_WR_ADDR, OUTPUT_PORT, &buf);
+	ret = PCA9538_Write_Register(KBRD_WR_ADDR, OUTPUT_PORT, &buf, hi2c1);
 	if( ret != HAL_OK ) {
-		UART_Transmit("Error write output\n");
+		//UART_Transmit("Error write output\n");
 	}
 
 exit:
 	return ret;
 }
 
-uint8_t Check_Row( uint8_t  Nrow ) {
+uint8_t Check_Row( uint8_t  Nrow, I2C_HandleTypeDef hi2c1 ) {
 	uint8_t Nkey = 0x00;
 	HAL_StatusTypeDef ret = HAL_OK;
 	uint8_t buf[4]={0,0,0,0};
 	uint8_t kbd_in;
 
-	ret = Set_Keyboard();
+	ret = Set_Keyboard(hi2c1);
 	if( ret != HAL_OK ) {
 		//UART_Transmit("Error write config\n");
 	}
 
 	buf[0] = Nrow;
 
-	ret = PCA9538_Write_Register(KBRD_WR_ADDR, OUTPUT_PORT, buf);
+	ret = PCA9538_Write_Register(KBRD_WR_ADDR, OUTPUT_PORT, buf, hi2c1);
 	if( ret != HAL_OK ) {
 		//UART_Transmit("Error write output\n");
 	}
 
 	buf[0] = 0;
-	ret = PCA9538_Read_Inputs(KBRD_RD_ADDR, buf);
+	ret = PCA9538_Read_Inputs(KBRD_RD_ADDR, buf, hi2c1);
 	if( ret != HAL_OK ) {
 		//UART_Transmit("Read error\n");
 	}
