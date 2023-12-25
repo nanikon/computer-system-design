@@ -33,9 +33,9 @@
 /* USER CODE BEGIN PD */
 #define WRITE_BUFFER_SIZE 512
 #define MIDDLE_BUFFER_SIZE 100
-#define TICK_BUFF_SIZE 20
+#define INPUT_TICK_BUFFER_SIZE 20
+#define TICK_BUFF_SIZE 200
 #define MAX_DURATION 10
-#define DEFAULT_LIGHT_DURATION 10
 #define MODES_COUNT 5
 /* USER CODE END PD */
 
@@ -71,7 +71,7 @@ uint32_t max_scaler = 100;
 uint32_t scaler_speed = 10;
 uint32_t new_scaler_speed;
 
-Input_tick tick_buffer[TICK_BUFF_SIZE] = {};
+Input_tick tick_buffer[INPUT_TICK_BUFFER_SIZE] = {};
 Input_tick cur_read_tick = {0};
 uint8_t tick_ptr = 0;
 uint8_t tick_len = 0;
@@ -531,6 +531,9 @@ void handler_input() {
 	} else {
 		if (read_buffer == '\r') {
 			if (tick_len != 0) {
+				bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+				middle_buffer[0] = '*';
+				send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
 				fill_mode_array(tick_buffer, tick_len, &modes[MODES_COUNT - 1]);
 				tick_ptr = 0;
 			}
@@ -581,7 +584,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   if (huart->Instance == USART6)
   {
     // USART6 завершил прием данных
-	  send_uart(huart, (uint8_t*) &read_buffer, sizeof(uint8_t));
+	  //send_uart(huart, (uint8_t*) &read_buffer, sizeof(uint8_t)); эхо
 	  handler_input();
 	  if (output == 1) {
 		  // режим проигрывания - выводим номер мелодии и скорость

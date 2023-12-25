@@ -66,7 +66,7 @@ void fill_tick_array(char color, uint8_t brightness, uint8_t duration,
   }
 
   int cur_bright = brightness - softness;
-  for (int i = mode->len; i < n + mode->len; i++) {
+  for (int i = 0; i < n; i++) {
     if (i < (n / 2)) {
       if (i < (n / 2) && abs(brightness - cur_bright) >= abs(each)) {
         cur_bright += each;
@@ -77,8 +77,8 @@ void fill_tick_array(char color, uint8_t brightness, uint8_t duration,
         left--;
       }
     }
-    fill_tick(&buffer[i], new_color, cur_bright);
-    zero_tick(&other_buffer[i]);
+    fill_tick(&buffer[i + mode->len], new_color, cur_bright);
+    zero_tick(&other_buffer[i + mode->len]);
   }
   mode->len += n;
 }

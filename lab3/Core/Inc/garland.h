@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEFAULT_LIGHT_DURATION 10
+#define DEFAULT_LIGHT_DURATION 5
 #define RED_COLOR 1
 #define YELLOW_COLOR 0
 #define GREEN_COLOR 1
