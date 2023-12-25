@@ -84,6 +84,7 @@ void fill_tick_array(char color, uint8_t brightness, uint8_t duration,
 }
 
 void fill_mode_array(Input_tick *array, uint8_t len, Mode *mode) {
+	mode->len = 0;
   for (int i = 0; i < len; i++) {
     Input_tick cur = array[i];
 
@@ -122,14 +123,6 @@ void play_red_yellow(uint8_t tick, Tick *red_yellow,
     } else
       turn_off_yellow_led();
   }
-}
-
-void play_new_mode(Mode *mode, Tick *green, Tick *red_yellow,
-                   uint32_t *writing_ptr, uint32_t *current_write_ptr) {
-  memcpy(green, mode->green, sizeof(Tick) * mode->len);
-  memcpy(red_yellow, mode->red_yellow, sizeof(Tick) * mode->len);
-  *writing_ptr = mode->len;
-  *current_write_ptr = 0;
 }
 
 void init_mode1(Mode *mode) {

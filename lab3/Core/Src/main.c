@@ -406,6 +406,32 @@ void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size) {
 	}
 }
 
+void play_new_mode(Mode *mode, Tick *green, Tick *red_yellow, uint32_t *writing_ptr, uint32_t *current_write_ptr) {
+	middle_buffer[0] = '\r';
+	send_uart(&huart6, middle_buffer, sizeof(uint8_t) * 1);
+	for (int i = 0; i < mode->len; i++) {
+	  middle_buffer[0] = mode->red_yellow[i].duration + '0';
+	  middle_buffer[1] = ' ';
+	  middle_buffer[2] = mode->red_yellow[i].color + '0';
+	  middle_buffer[3] = ' ';
+	  middle_buffer[4] = mode->green[i].duration + '0';
+	  middle_buffer[5] = '\r';
+	  send_uart(&huart6, middle_buffer, sizeof(uint8_t) * 6);
+  }
+  middle_buffer[0] = '\r';
+  send_uart(&huart6, middle_buffer, sizeof(uint8_t) * 1);
+  memcpy(green, mode->green, sizeof(Tick) * mode->len);
+  bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+  middle_buffer[0]= '?';
+  send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
+  memcpy(red_yellow, mode->red_yellow, sizeof(Tick) * mode->len);
+  bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+  middle_buffer[0]= ')';
+  send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
+  *writing_ptr = mode->len;
+  *current_write_ptr = 0;
+}
+
 void send_user_mode_param() {
 	if (tick_len == 0 && tick_ptr == 0) {
 		bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
@@ -453,21 +479,20 @@ void handler_input() {
 			// to next mode
 			if (mode == 5) {
 				mode = 1;
-				//play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			} else {
 				mode++;
-				//play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			}
+			bzero(middle_buffer, MIDDLE_BUFFER_SIZE);
+			middle_buffer[0] = '!';
+			send_uart(&huart6, middle_buffer, 1 * sizeof(uint8_t));
 			play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			break;
 		case '2':
 			// to previos mode
 			if (mode == 1) {
 				mode = 5;
-				//play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			} else {
 				mode--;
-				//play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			}
 			play_new_mode(&modes[mode - 1], green, red_yellow, &writing_ptr, &current_write_ptr);
 			break;
@@ -475,7 +500,7 @@ void handler_input() {
 			// faster
 			new_scaler_speed = scaler_speed - round((double) scaler_speed / 10);
 			if (new_scaler_speed == scaler_speed) {
-				new_scaler_speed++;
+				new_scaler_speed--;
 			}
 			if (new_scaler_speed > min_scaler) {
 				scaler_speed = new_scaler_speed;
@@ -484,6 +509,9 @@ void handler_input() {
 		case '4':
 			// slower
 			new_scaler_speed = scaler_speed + round((double) scaler_speed / 10);
+			if (new_scaler_speed == scaler_speed) {
+				new_scaler_speed++;
+			}
 			if (new_scaler_speed < max_scaler) {
 				scaler_speed = new_scaler_speed;
 			}
@@ -588,15 +616,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		     if (current_write_ptr == writing_ptr) {
 		       current_write_ptr = 0;
 		     }
-		     /*middle_buffer[0] = red_yellow[current_write_ptr].duration + '0';
+		     middle_buffer[0] = red_yellow[current_write_ptr].duration + '0';
 		     middle_buffer[1] = ' ';
 		     middle_buffer[2] = red_yellow[current_write_ptr].color + '0';
 		     middle_buffer[3] = ' ';
-		     middle_buffer[4] = green[current_write_ptr].color + '0';
+		     middle_buffer[4] = green[current_write_ptr].duration + '0';
 		     middle_buffer[5] = ' ';
 		     middle_buffer[6] = current_write_ptr + '0';
 		     middle_buffer[7] = ';';
-		     send_uart(&huart6, middle_buffer, 8 * sizeof(uint8_t));*/
+		     send_uart(&huart6, middle_buffer, 8 * sizeof(uint8_t));
 		  }
 		  htim4.Instance->CCR2 = 100 * green[current_write_ptr].duration;
 		  htim4.Instance->CCR3 = 0;
