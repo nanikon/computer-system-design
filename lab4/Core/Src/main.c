@@ -45,6 +45,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
+
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim4;
 
@@ -84,6 +86,7 @@ static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART6_UART_Init(void);
 static void MX_TIM4_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -124,6 +127,7 @@ int main(void)
   MX_TIM1_Init();
   MX_USART6_UART_Init();
   MX_TIM4_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
@@ -185,6 +189,54 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Analogue filter
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
 }
 
 /**
@@ -365,6 +417,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -404,6 +457,32 @@ void send_uart(UART_HandleTypeDef *huart, uint8_t* buffer, size_t buf_size) {
 		send_buffer_if_not_empty_IT(huart);
 	}
 }
+
+void KB_Test( void ) {
+  //UART_Transmit( (uint8_t*)"KB test start\n" );
+  uint8_t R = 0, C = 0, L = 0, Row[4] = {ROW4, ROW3, ROW2, ROW1}, Key, OldKey;
+  for ( int i = 0; i < 4; i++ ) {
+    while( !( R && C && L ) ) {
+      OldKey = Key;
+      Key = Check_Row( Row[i] );
+      if ( Key == 0x01 && Key != OldKey) {
+        //UART_Transmit( (uint8_t*)"Right pressed\n" );
+        R = 1;
+      } else if ( Key == 0x02 && Key != OldKey) {
+        //UART_Transmit( (uint8_t*)"Center pressed\n" );
+        C = 1;
+      } else if ( Key == 0x04 && Key != OldKey) {
+        //UART_Transmit( (uint8_t*)"Left pressed\n" );
+        L = 1;
+      }
+    }
+    //UART_Transmit( (uint8_t*)"Row complete\n" );
+    R = C = L = 0;
+    HAL_Delay(25);
+  }
+  //UART_Transmit( (uint8_t*)"KB test complete\n");
+}
+
 
 void play_new_mode(Mode *mode, Tick *green, Tick *red_yellow, uint32_t *writing_ptr, uint32_t *current_write_ptr) {
   memcpy(green, mode->green, sizeof(Tick) * mode->len);
