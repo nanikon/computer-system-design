@@ -5,10 +5,10 @@
 
 #define KBRD_RD_ADDR 0xE3
 #define KBRD_WR_ADDR 0xE2
-#define ROW1 0x1E
-#define ROW2 0x3D
-#define ROW3 0x7B
-#define ROW4 0xF7
+#define ROW1 0xFE //1111 1110
+#define ROW2 0xFD //1111 1101
+#define ROW3 0xFB //1111 1011
+#define ROW4 0xF7 //1111 0111
 
 HAL_StatusTypeDef Set_Keyboard(I2C_HandleTypeDef hi2c1) {
 	HAL_StatusTypeDef ret = HAL_OK;
@@ -34,76 +34,31 @@ exit:
 uint8_t Check_Row( uint8_t  Nrow, I2C_HandleTypeDef hi2c1 ) {
 	uint8_t Nkey = 0x00;
 	HAL_StatusTypeDef ret = HAL_OK;
-	uint8_t buf[4]={0,0,0,0};
+	uint8_t buf = 0;
 	uint8_t kbd_in;
 
 	ret = Set_Keyboard(hi2c1);
-	if( ret != HAL_OK ) {
-		//UART_Transmit("Error write config\n");
-	}
 
-	buf[0] = Nrow;
+	buf = Nrow;
 
-	ret = PCA9538_Write_Register(KBRD_WR_ADDR, OUTPUT_PORT, buf, hi2c1);
-	if( ret != HAL_OK ) {
-		//UART_Transmit("Error write output\n");
-	}
+	ret = PCA9538_Write_Register(KBRD_WR_ADDR, OUTPUT_PORT, &buf, hi2c1);
 
-	buf[0] = 0;
-	ret = PCA9538_Read_Inputs(KBRD_RD_ADDR, buf, hi2c1);
-	if( ret != HAL_OK ) {
-		//UART_Transmit("Read error\n");
-	}
-	kbd_in = buf[0] & 0x70;
+	ret = PCA9538_Write_Register(KBRD_WR_ADDR, CONFIG, &buf, hi2c1);
+
+	buf = 0;
+	ret = PCA9538_Read_Inputs(KBRD_RD_ADDR, &buf, hi2c1);
+
+	kbd_in = buf & 0x70;
 	Nkey = kbd_in;
 	if( kbd_in != 0x70) {
 		if( !(kbd_in & 0x10) ) {
-			switch (Nrow) {
-				case ROW1:
-					Nkey = 0x04;
-					break;
-				case ROW2:
-					Nkey = 0x04;
-					break;
-				case ROW3:
-					Nkey = 0x04;
-					break;
-				case ROW4:
-					Nkey = 0x04;
-					break;
-			}
-		}
-		if( !(kbd_in & 0x20) ) {
-			switch (Nrow) {
-				case ROW1:
-					Nkey = 0x02;
-					break;
-				case ROW2:
-					Nkey = 0x02;
-					break;
-				case ROW3:
-					Nkey = 0x02;
-					break;
-				case ROW4:
-					Nkey = 0x02;
-					break;
-			}
-		}
-		if( !(kbd_in & 0x40) ) {
-			switch (Nrow) {
-				case ROW1:
-					Nkey = 0x01;
-					break;
-				case ROW2:
-					Nkey = 0x01;
-					break;
-				case ROW3:
-					Nkey = 0x01;
-					break;
-				case ROW4:
-					Nkey = 0x01;
-					break;
-			}
+			Nkey = 0x04;
+		} else if( !(kbd_in & 0x20) ) {
+			Nkey = 0x02;
+		} else if( !(kbd_in & 0x40) ) {
+			Nkey = 0x01;
+		} else {
+			Nkey = 0x00;
 		}
 	}
 	else Nkey = 0x00;
