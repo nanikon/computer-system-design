@@ -20,8 +20,6 @@ typedef enum{
 
 HAL_StatusTypeDef PCA9538_Read_Register(uint16_t addr, pca9538_regs_t reg, uint8_t* buf, I2C_HandleTypeDef hi2c1);
 HAL_StatusTypeDef PCA9538_Write_Register(uint16_t addr, pca9538_regs_t reg, uint8_t* buf, I2C_HandleTypeDef hi2c1);
-HAL_StatusTypeDef PCA9538_Read_Config(uint16_t addr, uint8_t* buf, I2C_HandleTypeDef hi2c1);
-HAL_StatusTypeDef PCA9538_Check_DefaultConfig(uint16_t addr, I2C_HandleTypeDef hi2c1);
 HAL_StatusTypeDef PCA9538_Read_Inputs(uint16_t addr, uint8_t* buf, I2C_HandleTypeDef hi2c1);
 
 #endif /* PCA9538_H_ */

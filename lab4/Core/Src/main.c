@@ -150,6 +150,20 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+      uint8_t p_key = get_pressed_key();
+      if (p_key != 0 && noisy_key == 0) {
+      	noisy_key = p_key;
+      } else if (p_key != 0 && noisy_key == p_key) {
+      	if (is_pressed_key == 0) {
+      		is_pressed_key = 1;
+      		handler_pressed_key(p_key);
+      	}
+      } else if (noisy_key != 0 && p_key == 0) {
+      	noisy_key = 0;
+      } else if (noisy_key == 0 && p_key == 0) {
+      	is_pressed_key = 0;
+      }
+      HAL_Delay(15);
   }
   /* USER CODE END 3 */
 }
@@ -720,21 +734,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	            noisy_but = 0;
 	     } else if (but == 0 && noisy_but == 0) {
 	            is_pressed_but = 0;
-	          }
-
-	          uint8_t p_key = get_pressed_key();
-	          if (p_key != 0 && noisy_key == 0) {
-	          	noisy_key = p_key;
-	          } else if (p_key != 0 && noisy_key == p_key) {
-	          	if (is_pressed_key == 0) {
-	          		is_pressed_key = 1;
-	          		handler_pressed_key(p_key);
-	          	}
-	          } else if (noisy_key != 0 && p_key == 0) {
-	          	// todo додумать про то если дребезг не на 0 или 1, а на разные кнопки
-	          	noisy_key = 0;
-	          } else if (noisy_key == 0 && p_key == 0) {
-	          	is_pressed_key = 0;
 	          }
 
 	        }
